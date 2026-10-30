@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793349415968,
+      "tag": "0000_panoramic_talos",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793351193975,
+      "tag": "0001_yielding_peter_quill",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793354929111,
+      "tag": "0002_huge_malcolm_colcord",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "file": "samples/overture-2026-10-21.0/nyc-plumbers.jsonl",
+  "format": "jsonl",
+  "source": "overture",
+  "sourceUrl": "https://docs.overturemaps.org/guides/places/",
+  "license": "Per-record licensing; retain all source notices",
+  "attribution": "Overture Maps Foundation, release 2026-10-21.0; see https://docs.overturemaps.org/attribution/ for upstream notices; accompanying licence texts and Foursquare notice: samples/overture-2026-10-21.0/licenses",
+  "permissionConfirmed": false,
+  "extractedAt": "2026-10-30T09:56:32.916433+00:00",
+  "nextCursor": "05c9268f-ee3d-4cf7-b422-ceffd904c4f1",
+  "count": 4,
+  "candidatesRead": 5,
+  "excluded": {
+    "unapproved_license": 0,
+    "geography_or_name": 1
+  }
+}

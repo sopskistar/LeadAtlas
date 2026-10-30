@@ -1,0 +1,17 @@
+{
+  "file": "samples/overture-2026-10-21.0/toronto-plumbers.jsonl",
+  "format": "jsonl",
+  "source": "overture",
+  "sourceUrl": "https://docs.overturemaps.org/guides/places/",
+  "license": "Per-record licensing; retain all source notices",
+  "attribution": "Overture Maps Foundation, release 2026-10-21.0; see https://docs.overturemaps.org/attribution/ for upstream notices; accompanying licence texts and Foursquare notice: samples/overture-2026-10-21.0/licenses",
+  "permissionConfirmed": false,
+  "extractedAt": "2026-10-30T09:56:26.271923+00:00",
+  "nextCursor": "1460c427-90c8-4e38-a2bb-d9fdf3e17560",
+  "count": 5,
+  "candidatesRead": 5,
+  "excluded": {
+    "unapproved_license": 0,
+    "geography_or_name": 0
+  }
+}

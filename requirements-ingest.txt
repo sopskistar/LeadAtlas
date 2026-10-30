@@ -1,0 +1,3 @@
+# Latest 2.0.0 crashed on nested Overture Parquet filters during live QA.
+# Pin the extraction runtime independently from the web/worker Node image.
+duckdb==1.4.3

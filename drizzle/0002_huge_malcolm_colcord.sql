@@ -1,0 +1,1 @@
+ALTER TABLE "suppression_list" ADD COLUMN "emails" jsonb DEFAULT '[]'::jsonb NOT NULL;
