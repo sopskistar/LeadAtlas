@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Search, Download, Bookmark, History } from "lucide-react";
-import { ProductCards } from "./catalog";
+import { ProductCards, productName } from "./catalog";
 import { LeadsTable } from "./leads-table";
 import { api, Badge, Button, ErrorNotice, Loading, useResource } from "./ui";
 import type { BusinessRecord, SearchInput } from "@/lib/core/types";
@@ -49,7 +49,7 @@ export function Dashboard() {
           <div className="metric-grid">
             {[
               ["Searches", data.searches, Search],
-              ["Imported candidates", data.candidates, History],
+              ["Research candidates", data.candidates, History],
               ["Saved leads", data.saved, Bookmark],
               ["CSV exports", data.exports, Download],
             ].map(([label, value, Icon]) => {
@@ -68,25 +68,22 @@ export function Dashboard() {
         )
       )}
       <ProductCards />
-      <div className="card">
-        <h3>Before your first search</h3>
-        <p className="small">
-          Create your account, import a permitted regional dataset, review
-          website-host permissions, and configure a paid email verifier. Every
-          search is a durable job; you can close the browser and return later.
-        </p>
-        <div className="row">
-          <Link className="button secondary" href="/settings/sources">
-            Set up sources
-          </Link>
-          <Link className="button text" href="/sign-in">
-            Create an account →
-          </Link>
+      <div className="card onboarding">
+        <div>
+          <h3>Your first shortlist starts here.</h3>
+          <p className="small">
+            Choose a finder, enter a location and niche, and review the results.
+            New here? Take a quick sample tour to see how research becomes a
+            qualified contact.
+          </p>
         </div>
+        <Link className="button secondary" href="/tour">
+          Take the sample tour →
+        </Link>
       </div>
       {data && (
         <div className="card">
-          <h3>Imported source coverage</h3>
+          <h3>Available regional coverage</h3>
           {data.coverage.length ? (
             <div className="coverage">
               {data.coverage.map((c) => (
@@ -97,8 +94,8 @@ export function Dashboard() {
             </div>
           ) : (
             <p className="small">
-              No records imported. Location availability depends on the datasets
-              you ingest.
+              Research coverage is not available for this workspace yet. Please
+              check back later.
             </p>
           )}
         </div>
@@ -142,7 +139,7 @@ export function JobList() {
                   <tr key={j.id}>
                     <td>
                       <Link className="link" href={`/searches/${j.id}`}>
-                        {j.input.product} · {j.input.niche}
+                        {productName(j.input.product)} · {j.input.niche}
                         <br />
                         {j.input.city}, {j.input.region}
                       </Link>
@@ -260,8 +257,8 @@ export function JobDetail({ id }: { id: string }) {
               : "Research job"}
           </h1>
           <p>
-            {data?.job.input.product} · {data?.job.input.region} ·{" "}
-            {data?.job.input.country}
+            {data && productName(data.job.input.product)} ·{" "}
+            {data?.job.input.region} · {data?.job.input.country}
           </p>
         </div>
         <div className="row">
@@ -405,7 +402,7 @@ export function SavedLeads() {
     <div className="stack">
       <div>
         <div className="eyebrow">Your shortlist</div>
-        <h1>Saved leads</h1>
+        <h1>Lead Management & Export</h1>
         <p>
           Inspect sources, edit research tags, record evidence and suppress
           unsuitable contacts.

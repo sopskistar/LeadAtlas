@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { themeScript } from "@/lib/core/theme-script";
 export const metadata: Metadata = {
   title: {
-    default: "LeadAtlas — Find Businesses. Find Opportunities.",
+    default: "LeadAtlas — Better Leads. Better Opportunities.",
     template: "%s | LeadAtlas",
   },
   description:
@@ -18,8 +19,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

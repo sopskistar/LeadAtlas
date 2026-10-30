@@ -42,14 +42,18 @@ export function Account() {
             <h3>{data.user.name}</h3>
             <p>{data.user.email}</p>
             <p className="small">
-              Account ID: <code>{data.user.id}</code>
-              <br />
+              {data.isAdmin && (
+                <>
+                  Account ID: <code>{data.user.id}</code>
+                  <br />
+                </>
+              )}
               Role: {data.isAdmin ? "Source administrator" : "Workspace user"}
               <br />
               Email ownership:{" "}
               {data.user.emailVerified
                 ? "Verified"
-                : "Not verified; email delivery for verification is not configured"}
+                : "Not yet verified. Request a verification link from the sign-in page."}
             </p>
             <Button
               variant="secondary"
@@ -70,9 +74,10 @@ export function Account() {
               Previously downloaded files are outside LeadAtlas storage.
             </p>
             <p className="small">
-              Email/password sign-in is available. Password-reset email delivery
-              and email-ownership confirmation require a configured
-              transactional mail service before public launch.
+              <Link className="link" href="/forgot-password">
+                Reset your password
+              </Link>{" "}
+              using a secure email link.
             </p>
             <Link className="link" href="/privacy">
               Read the privacy policy

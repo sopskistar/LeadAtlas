@@ -1,6 +1,6 @@
 # Architecture
 
-Next.js 16 App Router, React, TypeScript and Tailwind 4 provide the application on Vercel. Radix Dialog and shadcn-style component primitives provide the evidence drawer. The interface uses the supplied blue/navy PNGs on white; transitions respect reduced-motion. No external font request is required. No AI model is used to manufacture records, scores or evidence.
+Next.js 16 App Router, React, TypeScript and Tailwind 4 provide the application on Vercel. Radix Dialog and shadcn-style component primitives provide the evidence drawer. The interface preserves the supplied blue/navy PNGs, with shared light/dark surface tokens, persisted Light/Dark/System preferences and accessible mobile navigation drawers; transitions respect reduced-motion. No external font request is required. No AI model is used to manufacture records, scores or evidence.
 
 ## Boundaries
 
@@ -55,7 +55,7 @@ Worker calls use HMAC-SHA256 over timestamp and exact body, constant-time compar
 
 Crawl requests reject private/reserved/mapped IPs, credentials, dangerous schemes, nonstandard ports and mixed public/private DNS answers. A validated DNS address is pinned into the actual TCP/TLS connection. Redirects are revalidated and limited to approved hosts; bodies, time, pages and crawl delays are bounded; compressed responses are refused. No authentication/CAPTCHA bypass, proxy rotation, script execution or intrusive SMTP probes occur. Site terms require explicit operator review in addition to robots. HTML email findings on different domains stay uncertain unless a directly published consumer mailbox is clearly associated.
 
-Production still needs operator-specific legal/privacy text, transactional email, monitoring, authenticated live staging tests, network-level egress restrictions and load testing. Do not launch paid access solely because unit tests pass.
+Production still needs operator-specific legal/privacy text, live transactional-email delivery verification, monitoring, authenticated live staging tests, network-level egress restrictions and load testing. Do not launch paid access solely because unit tests pass.
 
 ## API contract
 
@@ -75,3 +75,15 @@ All application responses set `Cache-Control: no-store`. JSON errors carry a saf
 | `/api/sources/website`, `/api/imports`                   | POST       | Admin rights configuration / bounded CSV or JSONL ingestion           |
 | `/api/sources/test`                                      | POST       | Admin, budgeted restricted-API connectivity test; no lead persistence |
 | `/api/account/delete`                                    | POST       | Cascading removal after exact typed confirmation                      |
+
+## Customer and administrator boundaries (experience revision)
+
+The four search product IDs and existing routes are retained; customer labels are Businesses With Websites, Businesses Without Websites, Domain Buyer Finder and New Business Finder. Lead Management & Export is the fifth feature, backed by existing saved-lead and export workflows. `/tour` is a synthetic UI-only walkthrough with no record creation or export path.
+
+`/admin/sources` checks the server session and `ADMIN_USER_IDS` before rendering. The old `/settings/sources` redirects to it. Source reads, writes, imports, tests and `/api/admin/status` enforce administrator authorization independently. Public `/api/status` provides only auth/registration/recovery/search availability booleans; configured does not establish live provider health. Private record/history/account pages redirect anonymous sessions to sign in, and APIs retain owner checks.
+
+Admin import/host approval forms can target an existing customer email. The server resolves it only after admin authorization, persists records and policies under that account and audits the provisioning actor/target. There is no automatic shared dataset or cross-tenant read. Customers never upload source datasets or manage provider keys.
+
+Auth retains Better Auth’s hashing, database sessions, origin/CSRF validation and shared rate limits. Recovery uses the existing verification table, a 15-minute random single-use token, atomic consumption, session revocation and Resend transactional mail. Email links are restricted to the configured origin; the recovery UI makes no delivery/registered-account claim. Reset pages have no-referrer/no-store responses. Production registration requires configured mail and email verification. Mail exceptions are logged without recipient, body or token and do not change recovery responses, preventing account enumeration through provider failures. Live sender verification, inbox delivery and Neon staging remain required operational checks.
+
+Transactional auth tasks use Better Auth’s background-task hook with Next.js `after`, so Vercel keeps delivery work alive without waiting for provider latency before returning the recovery response. Production inbox delivery still needs live validation.

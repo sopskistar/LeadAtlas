@@ -14,6 +14,7 @@ import {
   audit,
   geoPlaces,
   quotaCounters,
+  user,
 } from "../db/schema";
 import { getAuth, authConfigured } from "./auth";
 import { createJob, jobsConfigured, consumeProvider } from "./jobs";
@@ -26,6 +27,8 @@ import { assess } from "../core/quality";
 import { independentWebsite } from "../core/normalize";
 import type { BusinessRecord, Product } from "../core/types";
 import { suppressMailboxes } from "../core/suppression";
+import { isAdmin } from "./access";
+import { emailConfigured } from "./email";
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -70,6 +73,19 @@ async function body(req: Request) {
     chunks.push(value);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+async function provisionedOwner(actorId: string, raw: unknown) {
+  const { targetEmail } = z
+    .object({ targetEmail: z.email().optional().or(z.literal("")) })
+    .parse(raw);
+  if (!targetEmail) return actorId;
+  const [target] = await getDb()
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, targetEmail.toLowerCase()))
+    .limit(1);
+  if (!target) throw new ApiError(404, "Workspace account not found");
+  return target.id;
 }
 async function refreshSnapshots(
   db: Pick<ReturnType<typeof getDb>, "select" | "update">,
@@ -128,25 +144,23 @@ export async function handleApi(req: Request, segments: string[]) {
     if (req.method === "GET" && path === "status")
       return json({
         auth: authConfigured(),
-        database: !!process.env.DATABASE_URL,
-        orchestration: jobsConfigured(),
-        verifier: !!process.env.HUNTER_API_KEY,
-        sources: sourceRegistry(),
+        registration:
+          authConfigured() &&
+          (process.env.NODE_ENV !== "production" || emailConfigured()),
+        recovery: authConfigured() && emailConfigured(),
+        search:
+          authConfigured() && jobsConfigured() && !!process.env.HUNTER_API_KEY,
       });
     if (!authConfigured())
       throw new ApiError(
         503,
-        "Setup required: configure Neon and Better Auth before using account data.",
+        "Account services are temporarily unavailable. Please try again later.",
       );
     const identity = await getAuth().api.getSession({ headers: req.headers });
     if (req.method === "GET" && path === "session")
       return json({
         user: identity?.user ?? null,
-        isAdmin:
-          !!identity &&
-          (process.env.ADMIN_USER_IDS ?? "")
-            .split(",")
-            .includes(identity.user.id),
+        isAdmin: !!identity && isAdmin(identity.user.id),
       });
     if (!identity)
       throw new ApiError(401, "Sign in to use your LeadAtlas workspace.");
@@ -163,6 +177,7 @@ export async function handleApi(req: Request, segments: string[]) {
     );
     const pageSize = 25;
     if (req.method === "GET" && path === "sources") {
+      admin(ownerId);
       const configs = await db
         .select()
         .from(sourceConfigs)
@@ -172,6 +187,17 @@ export async function handleApi(req: Request, segments: string[]) {
         .from(quotaCounters)
         .where(sql`${quotaCounters.scope} IN (${`owner:${ownerId}`})`);
       return json({ sources: sourceRegistry(), configs, usage });
+    }
+    if (req.method === "GET" && path === "admin/status") {
+      admin(ownerId);
+      return json({
+        auth: authConfigured(),
+        database: !!process.env.DATABASE_URL,
+        orchestration: jobsConfigured(),
+        verifier: !!process.env.HUNTER_API_KEY,
+        email: emailConfigured(),
+        sources: sourceRegistry(),
+      });
     }
     if (req.method === "GET" && path === "cities") {
       const rows = await db
@@ -245,7 +271,7 @@ export async function handleApi(req: Request, segments: string[]) {
       if (!jobsConfigured())
         throw new ApiError(
           503,
-          "Configure Inngest keys and the authenticated worker before starting searches.",
+          "Search is temporarily unavailable. Please try again later.",
         );
       const job = await createJob(
         ownerId,
@@ -356,7 +382,10 @@ export async function handleApi(req: Request, segments: string[]) {
       }
       if (req.method === "POST" && segments[2] === "retry") {
         if (!jobsConfigured())
-          throw new ApiError(503, "Orchestration is not configured");
+          throw new ApiError(
+            503,
+            "Search is temporarily unavailable. Please try again later.",
+          );
         const [retry] = await db
           .update(jobs)
           .set({
@@ -501,10 +530,22 @@ export async function handleApi(req: Request, segments: string[]) {
       });
     if (req.method === "POST" && path === "imports") {
       admin(ownerId);
-      return json(await ingest(ownerId, await body(req)), 201);
+      const raw = await body(req);
+      const targetId = await provisionedOwner(ownerId, raw);
+      const result = await ingest(targetId, raw);
+      await db.insert(audit).values({
+        id: randomUUID(),
+        ownerId,
+        action: "workspace_data_provisioned",
+        resourceId: targetId,
+        detail: { count: result.count },
+      });
+      return json(result, 201);
     }
     if (req.method === "POST" && path === "sources/website") {
       admin(ownerId);
+      const raw = await body(req);
+      const targetId = await provisionedOwner(ownerId, raw);
       const config = z
         .object({
           enabled: z.boolean(),
@@ -519,11 +560,11 @@ export async function handleApi(req: Request, segments: string[]) {
           attribution: z.string().min(3).max(500),
           permissionConfirmed: z.literal(true),
         })
-        .parse(await body(req));
+        .parse(raw);
       await db
         .insert(sourceConfigs)
         .values({
-          ownerId,
+          ownerId: targetId,
           source: "website",
           enabled: config.enabled,
           policy: {
@@ -541,7 +582,7 @@ export async function handleApi(req: Request, segments: string[]) {
         ownerId,
         action: "source_rights_updated",
         resourceId: "website",
-        detail: { hosts: config.approvedHosts },
+        detail: { hosts: config.approvedHosts, targetOwnerId: targetId },
       });
       return json({ updated: true });
     }
@@ -763,7 +804,7 @@ export async function handleApi(req: Request, segments: string[]) {
     return json(
       {
         error:
-          "Request could not be completed. Check database connectivity and server configuration.",
+          "This service is temporarily unavailable. Please try again later.",
       },
       503,
     );

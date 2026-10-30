@@ -7,6 +7,12 @@ import * as schema from "../src/lib/db/schema";
 import { page } from "./fixtures/business";
 let database: ReturnType<typeof drizzle<typeof schema>>;
 const client = new PGlite();
+const authTasks = vi.hoisted(() => ({ pending: [] as Promise<unknown>[] }));
+vi.mock("next/server", () => ({
+  after: (task: Promise<unknown>) => {
+    authTasks.pending.push(task);
+  },
+}));
 vi.mock("@/lib/db", () => ({ getDb: () => database }));
 vi.mock("@/lib/server/inngest", () => ({
   inngest: { send: vi.fn().mockResolvedValue({ ids: ["test-event"] }) },
@@ -30,6 +36,7 @@ import { safeFetch } from "../src/worker/safe-fetch";
 let cookie = "";
 let ownerId = "";
 const base = "http://localhost:3000";
+let fixtureAddress = 1;
 async function request(
   path: string,
   method = "GET",
@@ -55,7 +62,11 @@ async function signup(email: string) {
   const res = await getAuth().handler(
     new Request(base + "/api/auth/sign-up/email", {
       method: "POST",
-      headers: { Origin: base, "Content-Type": "application/json" },
+      headers: {
+        Origin: base,
+        "Content-Type": "application/json",
+        "X-Forwarded-For": `203.0.113.${fixtureAddress++}`,
+      },
       body: JSON.stringify({
         name: "TEST account",
         email,
@@ -91,9 +102,14 @@ beforeAll(async () => {
   vi.stubEnv("INNGEST_SIGNING_KEY", "fixture-signing-key");
   vi.stubEnv("HUNTER_API_KEY", "fixture-verifier-key");
   vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
+  vi.stubEnv("RESEND_API_KEY", "fixture-email-key");
+  vi.stubEnv("AUTH_EMAIL_FROM", "LeadAtlas <auth@test.example>");
+  vi.stubEnv("AUTH_EMAIL_SENDER_VERIFIED", "true");
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: URL | string) => {
+      if (String(input) === "https://api.resend.com/emails")
+        return Response.json({ id: "fixture-accepted-message" });
       if (String(input).startsWith("https://api.hunter.io/v2/email-verifier"))
         return Response.json({
           data: {
@@ -110,6 +126,7 @@ beforeAll(async () => {
   vi.stubEnv("ADMIN_USER_IDS", ownerId);
 }, 30000);
 afterAll(async () => {
+  await Promise.all(authTasks.pending);
   await client.close();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -177,7 +194,7 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     const row = await importRow("Lease Fixture Plumbing", {
       websites: "",
       emails: "",
-      niche:"lease-only",
+      niche: "lease-only",
     });
     const job = await createJob(
       ownerId,
@@ -193,15 +210,13 @@ describe("persisted account → permitted import → worker → qualified CSV", 
       },
       "test-expired-lease-001",
     );
-    await database
-      .insert(schema.jobItems)
-      .values({
-        jobId: job.id,
-        businessId: row.id,
-        state: "PROCESSING",
-        leaseToken: "old-worker",
-        leaseUntil: new Date(Date.now() + 60000),
-      });
+    await database.insert(schema.jobItems).values({
+      jobId: job.id,
+      businessId: row.id,
+      state: "PROCESSING",
+      leaseToken: "old-worker",
+      leaseUntil: new Date(Date.now() + 60000),
+    });
     await expect(processBusiness(job.id, row.id)).rejects.toThrow("lease held");
     await database
       .update(schema.jobItems)
@@ -258,7 +273,9 @@ describe("persisted account → permitted import → worker → qualified CSV", 
       "Idempotency-Key": key,
     });
     expect((await repeated.json()).jobId).toBe(id);
-    expect(await database.select().from(schema.jobs).where(eq(schema.jobs.id,id))).toHaveLength(1);
+    expect(
+      await database.select().from(schema.jobs).where(eq(schema.jobs.id, id)),
+    ).toHaveLength(1);
     const discovery = await discover(id);
     expect(discovery.ids).toHaveLength(1);
     await processBusiness(id, record.id);
@@ -409,12 +426,253 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect((await request("imports", "POST", {}, other.cookie)).status).toBe(
       403,
     );
+    expect(
+      (await request("sources", "GET", undefined, other.cookie)).status,
+    ).toBe(403);
+    expect(
+      (await request("admin/status", "GET", undefined, other.cookie)).status,
+    ).toBe(403);
+    expect((await request("admin/status")).status).toBe(200);
     const malicious = new Request(base + "/api/jobs", {
       method: "POST",
       headers: { Cookie: cookie, Origin: "https://attacker.example" },
       body: "{}",
     });
     expect((await handleApi(malicious, ["jobs"])).status).toBe(403);
+  });
+  it("lets only administrators provision records and host policies for a customer workspace", async () => {
+    const target = await signup("provisioned@test.example");
+    const data = {
+      targetEmail: "provisioned@test.example",
+      source: "imports",
+      sourceUrl: "https://directory.example/provisioning",
+      license: "TEST-only licensed data",
+      attribution: "TEST FIXTURE ONLY",
+      permissionConfirmed: true,
+      format: "jsonl",
+      content: JSON.stringify({
+        source_id: "provisioned-fixture",
+        name: "Provisioned Plumbing",
+        country: "US",
+        region: "NY",
+        city: "New York",
+        niche: "plumber",
+        fixture: true,
+      }),
+    };
+    expect((await request("imports", "POST", data, target.cookie)).status).toBe(
+      403,
+    );
+    expect((await request("imports", "POST", data)).status).toBe(201);
+    const [record] = await database
+      .select()
+      .from(schema.businesses)
+      .where(eq(schema.businesses.name, "Provisioned Plumbing"));
+    expect(record.ownerId).toBe(target.id);
+    expect((await request(`leads/${record.id}/save`, "POST", {})).status).toBe(
+      404,
+    );
+    const policy = {
+      targetEmail: "provisioned@test.example",
+      enabled: true,
+      approvedHosts: ["provisioned.example"],
+      license: "TEST fixture approval",
+      attribution: "TEST fixture attribution",
+      permissionConfirmed: true,
+    };
+    expect((await request("sources/website", "POST", policy)).status).toBe(200);
+    const [config] = await database
+      .select()
+      .from(schema.sourceConfigs)
+      .where(eq(schema.sourceConfigs.ownerId, target.id));
+    expect(config.policy.approvedHosts).toEqual(["provisioned.example"]);
+    expect(
+      (
+        await request("imports", "POST", {
+          ...data,
+          targetEmail: "missing@test.example",
+        })
+      ).status,
+    ).toBe(404);
+  });
+  it("keeps provider setup out of public status without claiming live availability", async () => {
+    const response = await request("status");
+    const status = await response.json();
+    expect(status).toMatchObject({ auth: true, recovery: true });
+    expect(status).not.toHaveProperty("sources");
+    expect(status).not.toHaveProperty("database");
+    expect(status).not.toHaveProperty("verifier");
+  });
+  it("uses expiring single-use reset tokens, rejects weak passwords, and revokes existing sessions", async () => {
+    const target = await signup("recovery@test.example");
+    async function authRequest(path: string, body: unknown) {
+      return getAuth().handler(
+        new Request(`${base}/api/auth/${path}`, {
+          method: "POST",
+          headers: { Origin: base, "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+      );
+    }
+    const reset = await authRequest("request-password-reset", {
+      email: "recovery@test.example",
+      redirectTo: `${base}/reset-password`,
+    });
+    const unknown = await authRequest("request-password-reset", {
+      email: "unknown@test.example",
+      redirectTo: `${base}/reset-password`,
+    });
+    expect(reset.status).toBe(200);
+    expect(await unknown.json()).toEqual(await reset.json());
+    const calls = vi
+      .mocked(fetch)
+      .mock.calls.filter(
+        ([url]) => String(url) === "https://api.resend.com/emails",
+      );
+    expect(calls.length).toBeGreaterThan(0);
+    const sent = JSON.parse(calls.at(-1)![1]!.body as string);
+    expect(sent.to).toEqual(["recovery@test.example"]);
+    const url = new URL(sent.text.match(/http[^\s]+/)[0]);
+    expect(url.origin).toBe(base);
+    const token = url.searchParams.get("token")!;
+    const [stored] = await database
+      .select()
+      .from(schema.verification)
+      .where(eq(schema.verification.identifier, `reset-password:${token}`));
+    expect(stored.expiresAt.getTime() - Date.now()).toBeLessThanOrEqual(
+      15 * 60000,
+    );
+    expect(stored.expiresAt.getTime() - Date.now()).toBeGreaterThan(14 * 60000);
+    expect(
+      (await authRequest("reset-password", { token, newPassword: "too-short" }))
+        .status,
+    ).toBe(400);
+    const newPassword = "New-Unique-Passphrase-2026";
+    const concurrent = await Promise.all([
+      authRequest("reset-password", { token, newPassword }),
+      authRequest("reset-password", { token, newPassword }),
+    ]);
+    expect(concurrent.map((r) => r.status).sort()).toEqual([200, 400]);
+    expect(
+      (await authRequest("reset-password", { token, newPassword })).status,
+    ).toBe(400);
+    expect(
+      await getAuth().api.getSession({
+        headers: new Headers({ Cookie: target.cookie }),
+      }),
+    ).toBeNull();
+    expect(
+      (
+        await authRequest("sign-in/email", {
+          email: "recovery@test.example",
+          password: newPassword,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await authRequest("sign-in/email", {
+          email: "recovery@test.example",
+          password: "Strong-Test-Password-2026",
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await authRequest("request-password-reset", {
+          email: "recovery@test.example",
+          redirectTo: "https://attacker.example/reset",
+        })
+      ).status,
+    ).toBe(403);
+    await database.insert(schema.verification).values({
+      id: "fixture-expired-reset",
+      identifier: "reset-password:expired-fixture-token",
+      value: target.id,
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    expect(
+      (
+        await authRequest("reset-password", {
+          token: "expired-fixture-token",
+          newPassword,
+        })
+      ).status,
+    ).toBe(400);
+  });
+  it("returns recovery responses without waiting for a slow email provider", async () => {
+    await signup("slow-delivery@test.example");
+    let release!: (response: Response) => void;
+    const delivery = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(fetch).mockReturnValueOnce(delivery);
+    const priorTasks = authTasks.pending.length;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        getAuth().handler(
+          new Request(`${base}/api/auth/request-password-reset`, {
+            method: "POST",
+            headers: {
+              Origin: base,
+              "Content-Type": "application/json",
+              "X-Forwarded-For": "198.51.100.41",
+            },
+            body: JSON.stringify({
+              email: "slow-delivery@test.example",
+              redirectTo: "/reset-password",
+            }),
+          }),
+        ),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error("Recovery response waited for provider delivery"),
+              ),
+            3000,
+          );
+        }),
+      ]);
+      expect(response.status).toBe(200);
+      expect(authTasks.pending.length).toBeGreaterThan(priorTasks);
+    } finally {
+      clearTimeout(timer);
+      release(Response.json({ id: "fixture-slow-delivery-accepted" }));
+    }
+  });
+  it("does not reveal a registered account when the transactional provider fails", async () => {
+    await signup("delivery-failure@test.example");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ error: "fixture provider outage" }, { status: 503 }),
+    );
+    const send = (email: string) =>
+      getAuth().handler(
+        new Request(`${base}/api/auth/request-password-reset`, {
+          method: "POST",
+          headers: {
+            Origin: base,
+            "Content-Type": "application/json",
+            "X-Forwarded-For": "198.51.100.40",
+          },
+          body: JSON.stringify({ email, redirectTo: "/reset-password" }),
+        }),
+      );
+    const known = await send("delivery-failure@test.example");
+    const unknown = await send("not-an-account@test.example");
+    expect(known.status).toBe(200);
+    expect(await known.json()).toEqual(await unknown.json());
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("delivery failed"),
+    );
+    expect(log.mock.calls.flat().join(" ")).not.toMatch(
+      /delivery-failure@|token=|fixture-email-key/,
+    );
+    await send("not-an-account@test.example");
+    expect((await send("not-an-account@test.example")).status).toBe(429);
+    log.mockRestore();
   });
   it("reserves budgets atomically and rejects exhausted provider queries", async () => {
     vi.stubEnv("DAILY_SEARCH_BUDGET", "1");
@@ -478,16 +736,54 @@ describe("persisted account → permitted import → worker → qualified CSV", 
       "CANCELLED",
     );
   });
-  it("a superseded worker cannot overwrite another worker's lease or mark it failed",async()=>{
-    const[row]=await database.select().from(schema.businesses).where(eq(schema.businesses.name,"Alpha Plumbing"));
-    const job=await createJob(ownerId,{product:"contacts",country:"US",region:"NY",city:"New York",niche:"plumber",sources:["imports"],limit:1,queryBudget:5},"test-stale-lease-token-001");
-    await database.insert(schema.jobItems).values({jobId:job.id,businessId:row.id});
-    vi.mocked(safeFetch).mockImplementationOnce(async(url)=>{
-      await database.update(schema.jobItems).set({leaseToken:"replacement-worker",leaseUntil:new Date(Date.now()+300000)}).where(eq(schema.jobItems.jobId,job.id));
-      return {status:200,url,body:"User-agent: *\nAllow: /",contentType:"text/plain"};
+  it("a superseded worker cannot overwrite another worker's lease or mark it failed", async () => {
+    const [row] = await database
+      .select()
+      .from(schema.businesses)
+      .where(eq(schema.businesses.name, "Alpha Plumbing"));
+    const job = await createJob(
+      ownerId,
+      {
+        product: "contacts",
+        country: "US",
+        region: "NY",
+        city: "New York",
+        niche: "plumber",
+        sources: ["imports"],
+        limit: 1,
+        queryBudget: 5,
+      },
+      "test-stale-lease-token-001",
+    );
+    await database
+      .insert(schema.jobItems)
+      .values({ jobId: job.id, businessId: row.id });
+    vi.mocked(safeFetch).mockImplementationOnce(async (url) => {
+      await database
+        .update(schema.jobItems)
+        .set({
+          leaseToken: "replacement-worker",
+          leaseUntil: new Date(Date.now() + 300000),
+        })
+        .where(eq(schema.jobItems.jobId, job.id));
+      return {
+        status: 200,
+        url,
+        body: "User-agent: *\nAllow: /",
+        contentType: "text/plain",
+      };
     });
-    await expect(processBusiness(job.id,row.id)).rejects.toThrow("superseded");
-    const[item]=await database.select().from(schema.jobItems).where(eq(schema.jobItems.jobId,job.id));expect(item.leaseToken).toBe("replacement-worker");expect(item.state).toBe("PROCESSING");
-    const[unchanged]=await database.select().from(schema.jobs).where(eq(schema.jobs.id,job.id));expect(unchanged.processed).toBe(0);
+    await expect(processBusiness(job.id, row.id)).rejects.toThrow("superseded");
+    const [item] = await database
+      .select()
+      .from(schema.jobItems)
+      .where(eq(schema.jobItems.jobId, job.id));
+    expect(item.leaseToken).toBe("replacement-worker");
+    expect(item.state).toBe("PROCESSING");
+    const [unchanged] = await database
+      .select()
+      .from(schema.jobs)
+      .where(eq(schema.jobs.id, job.id));
+    expect(unchanged.processed).toBe(0);
   });
 });

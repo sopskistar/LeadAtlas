@@ -2,7 +2,20 @@
 
 This file distinguishes executed checks from external integration acceptance. Passing deterministic tests does not establish live data accuracy, production deployment, Meta approval or commercial reuse rights.
 
-## Executed in this workspace
+## Customer experience revision — 2026-10-30
+
+This revision resumes a clean local `main` at `d502635`, fast-forwarded to `5c5ae85` after confirming that the only remote addition was the complete UI/UX revision specification. There were no staged, unstaged or untracked changes to recover. The prior implementation, all three migrations, samples, qualification logic, worker and tests were retained.
+
+- Unit/integration suite: **131 passed across 11 files**, using actual Better Auth and migrated PGlite SQL plus explicitly labeled provider fixtures. New checks include anonymous/customer/admin page access, admin-only cross-workspace provisioning, reset expiry, concurrent single-use enforcement, password policy, session revocation, old-password rejection, safe email origin, identical unknown-account/provider-failure responses, database-backed recovery throttling, and a slow-provider check proving recovery responses do not wait for mail delivery.
+- Lint and strict TypeScript: **PASS** for the revised sources and tests.
+- Production build: **PASS**, including the development-only CSP fix and branded error pages.
+- Targeted desktop/mobile auth and axe WCAG checks: **8 passed** after fixing footer contrast and scoping form-alert assertions around Next.js’s separate route announcer.
+- Final Playwright run: **26 passed** against the final production build, including axe checks in both themes after the authentication background-lifetime refinement. Checks cover themes/persistence/system changes, mobile focus and navigation, public/admin boundaries, all finder forms, recovery states, synthetic tour and responsive screenshots at 320/360/375/390/430/768/1024/1440 pixels.
+- Production browser checks found no horizontal overflow, uncaught errors or hydration warnings across the eight tested widths; the search form also passed at 200% zoom. A separate development run reproduced React’s eval/CSP warning and the red issue indicator; the documented development-only CSP allowance removed both. A repeat Chromium check on homepage, finder and signup returned HTTP 200 with no console errors or issue indicator. Production CSP continues to exclude unsafe-eval.
+- Pre-revision Vercel homepage: **HTTP 200**, visually inspected in Chromium; public status reported `auth=false`, `database=false`, `orchestration=false`, `verifier=false`. Live Neon, Hunter, Inngest/worker and Resend delivery tests remain **UNTESTED**. These booleans are configuration signals, not successful connectivity checks.
+- Before/after homepage screenshots: [desktop before](screenshots/revision/before-desktop.png), [mobile before](screenshots/revision/before-mobile.png), [desktop light](screenshots/revision/after-desktop-light.png), [desktop dark](screenshots/revision/after-desktop-dark.png), [mobile light](screenshots/revision/after-mobile-light.png), [mobile dark](screenshots/revision/after-mobile-dark.png). The inherited site had no theme control, so before screenshots show its actual light appearance. Additional search/workspace/auth screenshots are generated under ignored `test-results/`.
+
+## Inherited validation record (prior session; not a substitute for the checks above)
 
 | Check                | Result                           | Scope                                                                                            |
 | -------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -54,11 +67,11 @@ These are genuine licensed discovery samples, **not independently verified busin
 | Google Places (New)                       | RESTRICTED, UNTESTED LIVE                                     | Review use/attribution terms; configure key/approval; budgeted ID-only lookup; ensure no Google fields enter lead storage/CSV                                                        |
 | Canada federal dataset                    | NORMALIZER/IMPORT TESTED WITH FIXTURES; LIVE RELEASE UNTESTED | Download current official dataset; inspect format; provide actual column mapping and license; normalize recent dates; import bounded records; independently enrich contacts/activity |
 | GeoNames                                  | IMPORTER IMPLEMENTED; LIVE FILE IMPORT UNTESTED               | Download US/CA files under CC BY; run streaming populated-place import; inspect attribution and province mapping; verify suggestions without claiming business coverage              |
-| Vercel, domain/DNS                        | NOT DEPLOYED                                                  | Connect authorized project, configure secrets, deploy worker and Inngest first, then Vercel; use Vercel’s returned DNS values                                                        |
+| Vercel, domain/DNS                        | PREVIEW REACHABLE; CUSTOM DOMAIN UNVERIFIED                   | Connect authorized project, configure secrets, deploy worker and Inngest first, then Vercel; use Vercel’s returned DNS values                                                        |
 
 ## Product/operational acceptance still open
 
-- No transactional verification/password-reset email; no operator-specific legal identity/privacy contact. Complete these before public signup/paid launch.
+- Resend verification/password-reset integration is now implemented; real credentials, sender verification and live delivery still require operator validation. Operator-specific legal identity/privacy contact remains missing. Complete these before public signup/paid launch.
 - No automatic Hunter 202 polling, global buyer discovery, full Canada bulk/API format support, 50-state registry feeds or automatic export-time refresh. Current bounded imported matching and conservative unverified outcomes are explicit.
 - No monetary billing/credits, invoice-cost metrics, calibration/false-positive truth study or measured real-world bounce rate. Query budgets and run counts are real; money/accuracy figures are not invented.
 - No automated object-storage provisioning/upload/retention, scheduled coverage expansion, full headless website-function/malware analysis or production load/security audit.

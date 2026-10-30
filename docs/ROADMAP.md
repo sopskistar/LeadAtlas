@@ -9,7 +9,7 @@
 - Import the actual Canada federal release and map its current schema. Add approved API/bulk-format adapters after contract validation. Current functionality is normalized CSV/JSONL import and incorporation-date queries.
 - Verify Meta app permissions/current Graph version and commercial use case; maintain restricted state if access/reuse is inadequate. No generic Facebook/Instagram city/niche email search is implemented.
 - Complete Google display attribution/terms review before displaying protected place details; current API requests IDs only and exports no Google fields.
-- Add transactional email ownership confirmation/password reset, legal/operator contact details, monitoring, abuse protection and production security/load review.
+- Validate the implemented Resend ownership-confirmation/password-reset flow with a verified sender and live Neon staging; complete legal/operator contact details, monitoring, abuse protection and production security/load review.
 
 ## Product and data depth
 

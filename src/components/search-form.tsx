@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Info } from "lucide-react";
-import { regions, stateRegistryCoverage } from "@/lib/core/locations";
+import { regions } from "@/lib/core/locations";
 import type { Product } from "@/lib/core/types";
 import { Button, ErrorNotice, api, useResource } from "./ui";
 import { products } from "./catalog";
@@ -20,9 +20,11 @@ export function SearchForm({ product }: { product: Product }) {
   const [portfolio, setPortfolio] = useState<string[]>([]);
   const { data: status } = useResource<{
     auth: boolean;
-    orchestration: boolean;
-    verifier: boolean;
+    search: boolean;
   }>("/api/status");
+  const { data: session } = useResource<{ user?: { id: string } }>(
+    "/api/session",
+  );
   const [suggestions, setSuggestions] = useState<string[]>([]);
   useEffect(() => {
     if (!city.trim()) return;
@@ -55,9 +57,12 @@ export function SearchForm({ product }: { product: Product }) {
           region,
           city: city.trim(),
           niche: String(data.get("niche") ?? "*"),
-          sources: data.getAll("source"),
+          sources:
+            product === "new"
+              ? ["overture", "imports", "canada"]
+              : ["overture", "imports"],
           limit: Number(data.get("limit")),
-          queryBudget: Number(data.get("budget")),
+          queryBudget: 20,
           ...(product === "domains"
             ? {
                 domain: portfolio.length ? undefined : data.get("domain"),
@@ -91,26 +96,34 @@ export function SearchForm({ product }: { product: Product }) {
         </div>
         <h1>{item.title}</h1>
         <p>{item.desc}</p>
+        <div className="search-example">{item.example}</div>
       </div>
       <div className="tool-layout">
         <div className="stack">
-          {status && (!status.auth || !status.orchestration) && (
-            <div className="notice">
-              <strong>Workspace setup required.</strong> Configure Neon,
-              authentication, Inngest and the enrichment worker to start real
-              searches. Review{" "}
-              <Link className="link" href="/settings/sources">
-                source setup and coverage
+          {status && !status.search && (
+            <div className="notice" role="status">
+              <strong>Search temporarily unavailable.</strong> We’re preparing
+              the research service. Please try again later, or{" "}
+              <Link className="link" href="/tour">
+                take the sample tour
               </Link>
               .
+            </div>
+          )}
+          {status?.search && !session?.user && (
+            <div className="notice">
+              <Link className="link" href="/sign-in">
+                Sign in
+              </Link>{" "}
+              to start a search and keep your research together.
             </div>
           )}
           <form className="card stack" onSubmit={submit}>
             <div>
               <h2 style={{ marginBottom: 5 }}>Define your search</h2>
               <p className="small" style={{ margin: 0 }}>
-                Use a small batch first. Every candidate goes through the
-                qualification pipeline.
+                Start with a focused location and niche. We’ll check each result
+                before it qualifies.
               </p>
             </div>
             <ErrorNotice message={error} />
@@ -258,41 +271,6 @@ export function SearchForm({ product }: { product: Product }) {
                   </label>
                 </>
               )}
-              <fieldset
-                className="full"
-                style={{ border: 0, padding: 0, margin: 0 }}
-              >
-                <legend
-                  style={{ fontSize: 12, fontWeight: 600, marginBottom: 12 }}
-                >
-                  Permitted discovery sources
-                </legend>
-                <div className="row">
-                  {[
-                    ...["overture", "imports"],
-                    ...(product === "new" ? ["canada"] : []),
-                  ].map((s) => (
-                    <label className="check" key={s}>
-                      <input
-                        name="source"
-                        type="checkbox"
-                        value={s}
-                        defaultChecked
-                      />
-                      {s === "overture"
-                        ? "Overture imports"
-                        : s === "imports"
-                          ? "Authorized CSV / directory"
-                          : "Canada federal imports"}
-                    </label>
-                  ))}
-                </div>
-                <p className="small" style={{ margin: "10px 0 0" }}>
-                  Facebook, Instagram and Google have separate access
-                  restrictions. They do not supply exportable lead records in
-                  this search.
-                </p>
-              </fieldset>
               <label>
                 Maximum candidates
                 <input
@@ -301,17 +279,6 @@ export function SearchForm({ product }: { product: Product }) {
                   min={1}
                   max={50}
                   defaultValue={10}
-                  required
-                />
-              </label>
-              <label>
-                Provider request budget
-                <input
-                  name="budget"
-                  type="number"
-                  min={0}
-                  max={200}
-                  defaultValue={20}
                   required
                 />
               </label>
@@ -325,19 +292,18 @@ export function SearchForm({ product }: { product: Product }) {
                   marginRight: 7,
                 }}
               />
-              Qualified exports require fresh, associated, vendor-verified
-              emails and reusable source fields.{" "}
-              {status && !status.verifier
-                ? "Hunter is not configured; results will remain unverified."
-                : "Verification outcomes depend on actual provider responses."}
+              Qualified exports include only recently verified business contacts
+              that pass the quality checks.
+              {product === "opportunities" &&
+                " A missing website field alone is never treated as proof that a business has no website."}
             </div>
             <div className="row between">
               <span className="small muted">
-                Imported regional coverage is required.
+                Results depend on available regional coverage.
               </span>
               <Button
                 type="submit"
-                disabled={busy || !status?.auth || !status?.orchestration}
+                disabled={busy || !status?.search || !session?.user}
               >
                 {busy ? "Starting search…" : "Start search"}
                 <ArrowRight size={15} />
@@ -346,19 +312,14 @@ export function SearchForm({ product }: { product: Product }) {
           </form>
           {product === "new" && (
             <section className="card">
-              <h3>Source coverage</h3>
+              <h3>Coverage & freshness</h3>
               <p className="small">
-                Canada: federal records from approved dataset imports. US:
-                state-specific imports only; live filing feeds are not
-                connected.
+                Recently registered businesses are available only in supported
+                regions. Canadian coverage currently includes federal records.
+                US coverage varies by state; live state filing feeds are not
+                connected. Registration alone does not establish current trading
+                activity.
               </p>
-              <div className="coverage">
-                {stateRegistryCoverage.map((s) => (
-                  <span title={`${s.name}: ${s.status}`} key={s.code}>
-                    {s.code} · not connected
-                  </span>
-                ))}
-              </div>
             </section>
           )}
         </div>
@@ -380,7 +341,7 @@ export function SearchForm({ product }: { product: Product }) {
               ],
               [
                 "Verify & export",
-                "Fresh vendor results and source rights decide what qualifies.",
+                "Recent verification and quality checks decide what qualifies.",
               ],
             ].map(([t, d], i) => (
               <li key={t}>

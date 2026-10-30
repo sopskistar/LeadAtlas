@@ -81,7 +81,7 @@ export function sourceRegistry(): SourceInfo[] {
     source(
       "website",
       "Permitted business websites",
-      "https://leadatlas.xyz/terms",
+      "/terms",
       "Explicit per-host terms review and permission; robots checked each run",
       "Bounded public contact research on the separate worker. No login, CAPTCHA bypass or browser stealth.",
       undefined,
@@ -90,7 +90,7 @@ export function sourceRegistry(): SourceInfo[] {
     source(
       "imports",
       "Authorized directory / CSV imports",
-      "https://leadatlas.xyz/settings/sources",
+      "/admin/sources",
       "Administrator confirms provenance and storage/export rights for each batch",
       "No blanket rights to chambers, directories or trade associations.",
       undefined,
@@ -117,7 +117,7 @@ export function sourceRegistry(): SourceInfo[] {
       source(
         id,
         id.replaceAll("_", " "),
-        "https://leadatlas.xyz/settings/sources",
+        "/admin/sources",
         "Provider-specific authorization and licence review required",
         "Not connected. No production data retrieval implemented.",
       ),

@@ -9,8 +9,9 @@ export function Sources() {
     auth: boolean;
     orchestration: boolean;
     verifier: boolean;
+    email: boolean;
     sources: SourceInfo[];
-  }>("/api/status");
+  }>("/api/admin/status");
   const { data: session } = useResource<{
     user?: { id: string };
     isAdmin: boolean;
@@ -27,7 +28,7 @@ export function Sources() {
     <div className="stack">
       <div className="page-intro">
         <div className="eyebrow">Provenance & permissions</div>
-        <h1>Sources & integrations</h1>
+        <h1>Data sources & operations</h1>
         <p>
           Connection status reflects configuration, permissions and implemented
           capabilities. Configured integrations remain untested until a real
@@ -59,6 +60,12 @@ export function Sources() {
             }
           />
         </div>
+        <p className="small">
+          Transactional auth email:{" "}
+          {status?.email
+            ? "configured; live delivery must be verified"
+            : "missing RESEND_API_KEY / AUTH_EMAIL_FROM / verified sender approval"}
+        </p>
         <p className="small" style={{ marginTop: 15 }}>
           Secrets belong in server environment variables. Use the repository’s
           .env.example, migrations and deployment guide.{" "}
@@ -161,6 +168,7 @@ function ImportForm() {
           permissionConfirmed: true,
           format: file.name.endsWith(".jsonl") ? "jsonl" : "csv",
           content: await file.text(),
+          targetEmail: f.get("targetEmail") || undefined,
         }),
       });
       setMessage(
@@ -193,6 +201,18 @@ function ImportForm() {
         </div>
       )}
       <div className="formgrid">
+        <label className="full">
+          Customer workspace email (optional)
+          <input
+            type="email"
+            name="targetEmail"
+            placeholder="Leave empty for your own workspace"
+          />
+          <span className="small muted">
+            Provision licensed records for an existing customer. Records and
+            qualification remain isolated to that account.
+          </span>
+        </label>
         <label>
           Source
           <select name="source">
@@ -261,6 +281,7 @@ function WebsitePermissions() {
           license: f.get("license"),
           attribution: f.get("attribution"),
           permissionConfirmed: true,
+          targetEmail: f.get("targetEmail") || undefined,
         }),
       });
       setMessage("Host policy saved. Robots will be checked at crawl time.");
@@ -278,6 +299,14 @@ function WebsitePermissions() {
       </p>
       <ErrorNotice message={error} />
       {message && <div className="notice success">{message}</div>}
+      <label>
+        Customer workspace email (optional)
+        <input
+          type="email"
+          name="targetEmail"
+          placeholder="Leave empty for your own workspace"
+        />
+      </label>
       <label>
         Approved hosts
         <textarea

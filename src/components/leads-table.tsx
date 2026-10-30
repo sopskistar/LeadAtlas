@@ -54,7 +54,12 @@ export function LeadsTable({
           {message}
         </div>
       )}
-      <div className="table-wrap">
+      <div
+        className="table-wrap"
+        tabIndex={0}
+        role="region"
+        aria-label="Business contacts table"
+      >
         {records.length ? (
           <table>
             <thead>
@@ -135,9 +140,8 @@ export function LeadsTable({
             <SearchX size={34} />
             <h3>No results in this view</h3>
             <p className="small">
-              Try the research view to see candidates and exclusion reasons.
-              <br />
-              No synthetic leads are substituted for missing coverage.
+              Save contacts from a search to build your shortlist, or adjust
+              your filters to review more research.
             </p>
           </div>
         )}

@@ -1,0 +1,1 @@
+export const themeScript = `(function(){try{var t=localStorage.getItem('leadatlas-theme');if(!['light','dark','system'].includes(t))t='light';document.documentElement.dataset.theme=t==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;}catch(e){}})();`;
