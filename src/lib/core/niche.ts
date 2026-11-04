@@ -5,6 +5,11 @@ export function nicheTerms(value: string) {
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
+  // Narrow customer-facing terms win over a broader NAICS title. The canonical
+  // code is metadata, not permission to expand plumbing into HVAC/construction.
+  if (/^(plumber|plumbers|plumbing)(_|$)/.test(normalized)) return ["plumb"];
+  if (/^(electrician|electricians|electrical_contractor)(_|$)/.test(normalized))
+    return ["electrician", "electrical_contractor", "electrical contractor"];
   const aliases: Record<string, string[]> = {
     plumber: ["plumb"],
     plumbers: ["plumb"],

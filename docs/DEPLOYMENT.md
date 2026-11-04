@@ -76,3 +76,15 @@ Use `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and `npm ru
 7. In GitHub/Vercel confirm the deployment commit equals the pushed main SHA, inspect the build outcome, and run the desktop/mobile smoke checks against the deployed origin. Local production-build tests do not establish Vercel or Neon readiness.
 
 Transactional auth tasks use Better Auth’s background-task hook with Next.js `after`, so Vercel keeps delivery work alive without waiting for provider latency before returning the recovery response. Production inbox delivery still needs live validation.
+
+## Global discovery and frontend corrections release
+
+Deploy the reviewed `feature/global-domain-discovery` branch after validation. This release includes the approved icon-only mark, the four-card homepage section, searchable geography/niches and the separate worldwide domain contract.
+
+1. Back up the target database and apply `npm run db:migrate` with the intended server-only database URL. Additive migration `0003_global_discovery_lease` adds two nullable columns; it does not rewrite existing jobs. Run it before deploying this web or worker version, since both read the updated job schema.
+2. Deploy the matching worker image and sync the updated Inngest workflow. Global discovery runs in the background with a renewable lease and durable polling; a Vercel-only deployment does not replace the worker.
+3. In Vercel, select this development branch/commit for a preview. Keep preview and production databases, auth origins and secrets separate. The normal build command remains `npm run build`; no new dependency installation procedure is needed.
+4. Configure discovery adapters only after reviewing terms and credentials. Flags and variables are documented in `.env.example` and [PRODUCT_CORRECTIONS](PRODUCT_CORRECTIONS.md). Missing credentials/host permissions produce unavailable or unqualified research, never sample prospects. The optional AI adapter remains disabled.
+5. Check the preview homepage, four finder routes, sign-in, account/admin boundaries and responsive results before promoting the deployment. Live provider contracts, Neon/worker restart recovery and production mail delivery remain acceptance checks.
+
+The Git push does not merge this branch into `main` or execute a production deployment. Local tests establish build/regression readiness, not verified production data availability.

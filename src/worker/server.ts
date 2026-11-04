@@ -2,7 +2,8 @@ import "dotenv/config";
 import { createServer } from "node:http";
 import { z } from "zod";
 import { validWorkerSignature } from "../lib/server/worker-auth";
-import { discover, processBusiness, finish } from "./pipeline";
+import { requestDiscovery } from "./discovery-task";
+import { processBusiness, finish } from "./pipeline";
 import { getDb } from "../lib/db";
 import { jobItems } from "../lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -50,7 +51,8 @@ createServer(async (req, res) => {
     }
     const payload = input.parse(JSON.parse(body));
     let result: { ids?: string[]; status?: string };
-    if (payload.action === "discover") result = await discover(payload.jobId);
+    if (payload.action === "discover")
+      result = await requestDiscovery(payload.jobId);
     else if (payload.action === "finish") result = await finish(payload.jobId);
     else if (payload.businessId) {
       const [item] = await getDb()

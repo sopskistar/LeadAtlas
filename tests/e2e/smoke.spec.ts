@@ -39,30 +39,30 @@ test("public, search and account screens pass automated WCAG checks in both them
   }
 });
 
-test("homepage explains all five features and uses real brand assets", async ({
+test("homepage presents four independent discovery features and the approved icon", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Find businesses worth contacting.",
   );
-  const logo = page
-    .getByRole("img", { name: "LeadAtlas", exact: true })
+  const homeLink = page
+    .getByRole("link", { name: "LeadAtlas home", exact: true })
     .first();
+  const logo = homeLink.locator("img");
   await expect(logo).toBeVisible();
+  expect(await logo.getAttribute("src")).toContain("leadatlas-icon-v2");
+  expect(await homeLink.textContent()).toBe("");
   expect(
     await logo.evaluate((image: HTMLImageElement) => image.naturalWidth),
   ).toBeGreaterThan(0);
-  for (const [, title] of [
-    ...finders,
-    ["/leads", "Lead Management & Export"],
-  ]) {
+  for (const [, title] of finders)
     await expect(
       page
         .locator("#features")
         .getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
-  }
+  await expect(page.locator("#features h2")).toHaveCount(4);
   await expect(
     page.getByText("Illustrative preview", { exact: true }),
   ).toBeVisible();
@@ -96,7 +96,9 @@ test("all four finders preserve their routes and honest unavailable states", asy
     );
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
       ),
     ).toBe(true);
   }
@@ -106,16 +108,25 @@ test("country selection retains every US and Canadian region", async ({
   page,
 }) => {
   await page.goto("/business-contacts");
+  await page.getByRole("combobox", { name: "State", exact: true }).click();
   await expect(
     page
-      .getByRole("combobox", { name: "State", exact: true })
-      .locator("option"),
+      .getByRole("listbox", { name: "State suggestions", exact: true })
+      .getByRole("option"),
   ).toHaveCount(51);
-  await page.getByLabel("Country", { exact: true }).selectOption("CA");
+  await page.getByLabel("Country", { exact: true }).fill("Canada");
+  await page.getByLabel("Country", { exact: true }).press("ArrowDown");
+  await page.getByLabel("Country", { exact: true }).press("Enter");
+  await page
+    .getByRole("combobox", { name: "Province / territory", exact: true })
+    .click();
   await expect(
     page
-      .getByRole("combobox", { name: "Province / territory", exact: true })
-      .locator("option"),
+      .getByRole("listbox", {
+        name: "Province / territory suggestions",
+        exact: true,
+      })
+      .getByRole("option"),
   ).toHaveCount(13);
   await page.getByLabel("City", { exact: true }).fill("Toronto");
   await page
@@ -391,7 +402,9 @@ test("responsive pages render without overflow, browser errors or hydration warn
       await expect(page.locator("h1")).toBeVisible();
       expect(
         await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
         ),
         `${path} at ${width}px`,
       ).toBe(true);
@@ -427,7 +440,9 @@ test("responsive pages render without overflow, browser errors or hydration warn
   });
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
     ),
   ).toBe(true);
   await expect(

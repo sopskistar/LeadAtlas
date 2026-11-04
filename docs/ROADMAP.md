@@ -17,7 +17,7 @@
 - Improve independently reviewed current-trading signals, closure contradictions, website-function checks and professional identity disambiguation. Never turn a heuristic ranking into a probability claim.
 - Add permissioned listings API adapters and independently verified public contact-page research for website-less businesses. Current path uses licensed imported contact evidence; it does not scrape restricted social profiles.
 - Add cross-source reliable domain/address entity matching while preserving franchise locations and conflict review; current matching is conservative normalized name/geography/source ID.
-- Extend domain research beyond the selected city’s bounded imported pool. Add cross-region targeted discovery only when identity/location/contact rights can be grounded, not a city-wide industry blast.
+- Live-validate the implemented global domain discovery adapters, reviewed host permissions and independent identity/activity integrations. Expand multilingual query coverage and permissioned registries/directories without broadening name matching. See PRODUCT_CORRECTIONS.md.
 - Persist multiple matches per portfolio/domain as separate records, standalone portfolio management, richer lead filters, saved-lead bulk actions and export-time budgeted revalidation. Current portfolio is a job input and one best match per business.
 - Add automatic outbox recovery, monetary provider costs, qualified-lead credit accounting and reviewed truth-set quality metrics. Do not fabricate business-association accuracy or real-world bounce rates; only authorized delivery feedback can measure those.
 - Add automated aging/revalidation schedules; evidence TTLs are already validated environment settings with conservative defaults.

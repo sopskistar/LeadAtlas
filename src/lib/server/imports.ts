@@ -28,10 +28,10 @@ export const importSchema = z.object({
 const rowSchema = z.object({
   source_id: z.string().min(1).max(200),
   name: z.string().min(2).max(300),
-  country: z.enum(["US", "CA"]),
-  region: z.string().min(2).max(10),
-  city: z.string().min(1).max(100),
-  niche: z.string().min(1).max(100),
+  country: z.string().regex(/^[A-Z]{2}$/),
+  region: z.string().max(100).default(""),
+  city: z.string().max(100).default(""),
+  niche: z.string().min(1).max(150),
   websites: z.string().default(""),
   socials: z.string().default(""),
   emails: z.string().default(""),
@@ -68,7 +68,11 @@ export function parseImport(
   const now = new Date().toISOString();
   return raw.map((value) => {
     const row = rowSchema.parse(value);
-    if (!validRegion(row.country, row.region))
+    if (
+      row.country === "US" || row.country === "CA"
+        ? !validRegion(row.country, row.region)
+        : input.source !== "imports"
+    )
       throw new Error(`Unsupported region ${row.region}`);
     if (
       input.source === "canada" &&

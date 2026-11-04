@@ -30,9 +30,17 @@ export const searchWorkflow = inngest.createFunction(
   },
   async ({ event, step }) => {
     const jobId = event.data.jobId as string;
-    const discovered = await step.run("discover-permitted-records", () =>
-      workerCall({ action: "discover", jobId }),
-    );
+    let discovered: { ids?: string[]; status?: string } = {};
+    for (let attempt = 0; attempt < 120; attempt++) {
+      discovered = await step.run(`discover-permitted-records-${attempt}`, () =>
+        workerCall({ action: "discover", jobId }),
+      );
+      if (discovered.status === "CANCELLED") return { status: "CANCELLED" };
+      if (discovered.ids) break;
+      await step.sleep(`wait-discovery-${attempt}`, "5s");
+    }
+    if (!discovered.ids)
+      throw new Error("Discovery still in progress; resume durable polling");
     for (const id of discovered.ids ?? []) {
       let done = false;
       for (let attempt = 0; attempt < 60; attempt++) {

@@ -79,6 +79,21 @@ export function sourceRegistry(): SourceInfo[] {
       "BRAVE_SEARCH_API_KEY",
     ),
     source(
+      "dataforseo",
+      "DataForSEO licensed SERP discovery",
+      "https://docs.dataforseo.com/v3/serp/google/organic/live/advanced/",
+      "Operator must review discovery use; SERP access grants no underlying contact reuse rights",
+      "Transient URLs only. Multi-country query locales required; first-party identity and permission review remain mandatory.",
+      "DATAFORSEO_LOGIN",
+    ),
+    source(
+      "commoncrawl",
+      "Common Crawl URL index",
+      "https://index.commoncrawl.org/",
+      "Index access is not a licence to reuse the indexed website content",
+      "Explicit approval and pinned archive required. Historic URL hints only; no activity or contact verification.",
+    ),
+    source(
       "website",
       "Permitted business websites",
       "/terms",
@@ -134,6 +149,10 @@ export function importedAdapter(
       input: SearchInput,
       context: { ownerId: string; jobId: string },
     ) {
+      if (!input.country || !input.region || !input.city || !input.niche)
+        throw new Error(
+          "Regional adapter requires an explicit location and niche",
+        );
       const filters = [
         eq(businesses.ownerId, context.ownerId),
         eq(businesses.source, id),

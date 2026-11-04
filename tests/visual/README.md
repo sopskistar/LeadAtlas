@@ -7,6 +7,7 @@ docker run --rm --name leadatlas-visual-review --detach \
   --publish 127.0.0.1:5439:5432 --env POSTGRES_PASSWORD=visual-local-only \
   --env POSTGRES_DB=leadatlas_visual --tmpfs /var/lib/postgresql/data postgres:17-alpine
 npx tsx tests/visual/fixture-server.mts
+npx tsx tests/visual/seed-domains.mts
 npm run build
 ```
 
@@ -31,3 +32,5 @@ Screenshots are written to ignored `.hallmark/validation/`, outside Playwrightâ€
 The initial PGlite socket attempt was retired after PostgreSQL protocol state failed under the existing connection pool. No production pool settings or authentication rules were changed to accommodate the test adapter. The existing 131 unit/integration tests still use their original supported direct PGlite adapter.
 
 For an authoritative public production run after rebuilding, use `CI=1 npm run test:e2e` with port 3100 free. This disables Playwright's normal local-server reuse. An interrupted capture once left an older server on that port; it returned obsolete chunk references after a rebuild. The stale server was identified and stopped, and the assertions were rerun against a fresh process. Do not interpret an unstyled stale-server page as the current application.
+
+The domain fixture adds one fictional global result. The suite reuses a real authenticated session within each worker so repeated test runs do not weaken or bypass sign-in rate limits. Global result tests check the table at eight widths, horizontal keyboard scrolling, pointer access, evidence focus return and both themes. CSS containment keeps wide tables inside their scroll region and prevents mobile layout-viewport expansion.

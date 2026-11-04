@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Info } from "lucide-react";
 import { regions } from "@/lib/core/locations";
 import type { Product } from "@/lib/core/types";
 import { Button, ErrorNotice, api, useResource } from "./ui";
+import { Combobox, type Choice } from "./combobox";
 import { products } from "./catalog";
 export function SearchForm({ product }: { product: Product }) {
   const item = products.find((p) => p.id === product)!;
@@ -21,27 +22,39 @@ export function SearchForm({ product }: { product: Product }) {
   const { data: status } = useResource<{
     auth: boolean;
     search: boolean;
+    domainSearch?: boolean;
   }>("/api/status");
   const { data: session } = useResource<{ user?: { id: string } }>(
     "/api/session",
   );
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  useEffect(() => {
-    if (!city.trim()) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      void api<{ cities: string[] }>(
-        `/api/cities?country=${country}&region=${region}&q=${encodeURIComponent(city)}`,
-        { signal: controller.signal },
-      )
-        .then((d) => setSuggestions(d.cities))
-        .catch(() => {});
-    }, 250);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [country, region, city]);
+  const [niche, setNiche] = useState("");
+  const [categoryId, setCategoryId] = useState<string | undefined>();
+  const [strategy, setStrategy] = useState("auto");
+  const available =
+    product === "domains" ? status?.domainSearch : status?.search;
+  const loadCities = useCallback(
+    async (q: string, offset: number, signal: AbortSignal) => {
+      const data = await api<{ cities: string[]; nextOffset: number | null }>(
+        `/api/cities?country=${country}&region=${region}&q=${encodeURIComponent(q)}&offset=${offset}`,
+        { signal },
+      );
+      return {
+        options: data.cities.map((label) => ({ id: label, label })),
+        nextOffset: data.nextOffset,
+      };
+    },
+    [country, region],
+  );
+  const loadNiches = useCallback(
+    async (q: string, _offset: number, signal: AbortSignal) => {
+      const data = await api<{ suggestions: Choice[] }>(
+        `/api/niches?q=${encodeURIComponent(q)}`,
+        { signal },
+      );
+      return { options: data.suggestions };
+    },
+    [],
+  );
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -53,25 +66,38 @@ export function SearchForm({ product }: { product: Product }) {
         headers: { "Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({
           product,
-          country,
-          region,
-          city: city.trim(),
-          niche: String(data.get("niche") ?? "*"),
-          sources:
-            product === "new"
-              ? ["overture", "imports", "canada"]
-              : ["overture", "imports"],
-          limit: Number(data.get("limit")),
-          queryBudget: 20,
           ...(product === "domains"
             ? {
+                scope: "global",
                 domain: portfolio.length ? undefined : data.get("domain"),
                 domains: portfolio.length ? portfolio : undefined,
-                domainKind: data.get("domainKind"),
+                domainKind: strategy,
                 ownershipAffirmed: data.get("ownership") === "on",
-                professionalContext: data.get("context"),
+                professionalContext: String(data.get("context") ?? ""),
+                filters:
+                  data.get("filterCountry") || data.get("filterIndustry")
+                    ? {
+                        country:
+                          String(data.get("filterCountry") || "")
+                            .trim()
+                            .toUpperCase() || undefined,
+                        industry:
+                          String(data.get("filterIndustry") || "").trim() ||
+                          undefined,
+                      }
+                    : undefined,
               }
-            : {}),
+            : {
+                country,
+                region,
+                city: city.trim(),
+                niche: niche.trim(),
+                categoryId,
+                sources:
+                  product === "new"
+                    ? ["overture", "imports", "canada"]
+                    : ["overture", "imports"],
+              }),
           ...(product === "new"
             ? { since: data.get("since"), until: data.get("until") }
             : {}),
@@ -94,13 +120,13 @@ export function SearchForm({ product }: { product: Product }) {
             : product === "opportunities"
               ? "Research operating businesses without an identified independent website."
               : product === "domains"
-                ? "Find close existing-domain and business-name matches."
+                ? "Research a worldwide shortlist of businesses with a closely related name or domain."
                 : "Research recent incorporation records in supported regions."}
         </p>
       </div>
       <div className="tool-layout">
         <div className="stack">
-          {status && !status.search && (
+          {status && !available && (
             <div className="notice" role="status">
               <strong>Search temporarily unavailable.</strong> We’re preparing
               the research service. Please try again later, or{" "}
@@ -110,7 +136,7 @@ export function SearchForm({ product }: { product: Product }) {
               .
             </div>
           )}
-          {status?.search && !session?.user && (
+          {available && !session?.user && (
             <div className="notice">
               <Link className="link" href="/sign-in">
                 Sign in
@@ -131,14 +157,19 @@ export function SearchForm({ product }: { product: Product }) {
                     Your domain
                     <input
                       name="domain"
-                      placeholder="oceanwise.com"
+                      placeholder="yourdomain.com"
                       required={!portfolio.length}
                       maxLength={253}
                     />
                   </label>
                   <label>
                     Matching strategy
-                    <select name="domainKind">
+                    <select
+                      name="domainKind"
+                      value={strategy}
+                      onChange={(e) => setStrategy(e.target.value)}
+                    >
+                      <option value="auto">Automatic</option>
                       <option value="brandable">Brandable name</option>
                       <option value="exact">Exact-match brand/domain</option>
                       <option value="personal">
@@ -147,10 +178,11 @@ export function SearchForm({ product }: { product: Product }) {
                     </select>
                   </label>
                   <label>
-                    Professional context (required for names)
+                    Professional context
                     <input
                       name="context"
-                      placeholder="Practice, profession, city or company"
+                      required={strategy === "personal"}
+                      placeholder="Practice, profession or company"
                     />
                   </label>
                   <label className="full">
@@ -170,7 +202,11 @@ export function SearchForm({ product }: { product: Product }) {
                             .split(/\r?\n/)
                             .map((v) => v.trim().replace(/^"|"$/g, ""))
                             .filter((v) => v.toLowerCase() !== "domain");
-                          setPortfolio(rows.slice(0, 25));
+                          if (rows.length > 25) {
+                            setError("Upload up to 25 domains.");
+                            return;
+                          }
+                          setPortfolio(rows);
                         }
                       }}
                     />
@@ -190,72 +226,72 @@ export function SearchForm({ product }: { product: Product }) {
                   </label>
                 </>
               )}
-              <label>
-                Country
-                <select
-                  aria-label="Country"
-                  name="country"
-                  value={country}
-                  onChange={(e) => {
-                    const c = e.target.value as "US" | "CA";
-                    setCountry(c);
-                    setRegion(c === "US" ? "NY" : "ON");
-                  }}
-                >
-                  <option value="US">United States</option>
-                  <option value="CA">Canada</option>
-                </select>
-              </label>
-              <label>
-                {country === "US" ? "State" : "Province / territory"}
-                <select
-                  aria-label={
-                    country === "US" ? "State" : "Province / territory"
-                  }
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                >
-                  {Object.entries(regions[country]).map(([code, name]) => (
-                    <option value={code} key={code}>
-                      {String(name)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                City
-                <input
-                  aria-label="City"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder={
-                    country === "US" ? "e.g. New York" : "e.g. Toronto"
-                  }
-                  list="cities"
-                  maxLength={100}
-                  autoComplete="address-level2"
-                />
-                <datalist id="cities">
-                  {suggestions.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-              </label>
-              <label>
-                {product === "domains"
-                  ? "Niche (optional context)"
-                  : "Business niche"}
-                <input
-                  name="niche"
-                  placeholder="Plumber, salon, electrician…"
-                  required
-                  defaultValue={
-                    product === "domains" || product === "new" ? "*" : undefined
-                  }
-                  maxLength={100}
-                />
-              </label>
+              {product !== "domains" && (
+                <>
+                  <Combobox
+                    label="Country"
+                    name="country"
+                    value={country === "US" ? "United States" : "Canada"}
+                    options={[
+                      { id: "US", label: "United States" },
+                      { id: "CA", label: "Canada" },
+                    ]}
+                    required
+                    onChange={() => {}}
+                    onSelect={(choice) => {
+                      setCountry(choice.id as "US" | "CA");
+                      setRegion(choice.id === "US" ? "NY" : "ON");
+                      setCity("");
+                    }}
+                  />
+                  <Combobox
+                    key={country}
+                    label={country === "US" ? "State" : "Province / territory"}
+                    name="region"
+                    value={String(regions[country][region])}
+                    options={Object.entries(regions[country]).map(
+                      ([id, label]) => ({ id, label: String(label) }),
+                    )}
+                    required
+                    onChange={() => {}}
+                    onSelect={(choice) => {
+                      setRegion(choice.id);
+                      setCity("");
+                    }}
+                  />
+                  <Combobox
+                    key={`${country}-${region}`}
+                    label="City"
+                    name="city"
+                    value={city}
+                    onChange={setCity}
+                    load={loadCities}
+                    custom
+                    required
+                    attribution="GeoNames, CC BY 4.0"
+                    placeholder="Search or choose a city"
+                  />
+                  <Combobox
+                    label="Business niche"
+                    name="niche"
+                    value={niche}
+                    onChange={(value) => {
+                      setNiche(value);
+                      setCategoryId(undefined);
+                    }}
+                    onSelect={(choice) =>
+                      setCategoryId(
+                        choice.id === "custom" ? undefined : choice.id,
+                      )
+                    }
+                    load={loadNiches}
+                    custom
+                    required
+                    attribution="2022 NAICS with business-name synonyms"
+                    placeholder="Plumber, salon, electrician…"
+                  />
+                </>
+              )}
               {product === "new" && (
                 <>
                   <label>
@@ -268,17 +304,30 @@ export function SearchForm({ product }: { product: Product }) {
                   </label>
                 </>
               )}
-              <label>
-                Maximum candidates
-                <input
-                  name="limit"
-                  type="number"
-                  min={1}
-                  max={50}
-                  defaultValue={10}
-                  required
-                />
-              </label>
+              {product === "domains" && (
+                <details className="full advanced-filters">
+                  <summary>Advanced filters</summary>
+                  <div className="formgrid">
+                    <label>
+                      Country code (optional)
+                      <input
+                        name="filterCountry"
+                        placeholder="Any country"
+                        maxLength={2}
+                        pattern="[A-Za-z]{2}"
+                      />
+                    </label>
+                    <label>
+                      Industry (optional)
+                      <input
+                        name="filterIndustry"
+                        placeholder="Any industry"
+                        maxLength={100}
+                      />
+                    </label>
+                  </div>
+                </details>
+              )}
             </div>
             <div className="notice small">
               <ShieldCheck
@@ -296,11 +345,13 @@ export function SearchForm({ product }: { product: Product }) {
             </div>
             <div className="row between search-submit">
               <span className="small muted">
-                Results depend on available regional coverage.
+                {product === "domains"
+                  ? "Worldwide research. A match does not establish buying intent."
+                  : "Results depend on available regional coverage."}
               </span>
               <Button
                 type="submit"
-                disabled={busy || !status?.search || !session?.user}
+                disabled={busy || !available || !session?.user}
               >
                 {busy ? "Starting search…" : "Start search"}
                 <ArrowRight size={15} />
@@ -327,7 +378,9 @@ export function SearchForm({ product }: { product: Product }) {
               {[
                 [
                   "Discover",
-                  "Use permitted records matching your location and niche.",
+                  product === "domains"
+                    ? "Discover closely related domains worldwide using authorized sources."
+                    : "Use permitted records matching your location and niche.",
                 ],
                 [
                   "Check the business",
@@ -357,8 +410,9 @@ export function SearchForm({ product }: { product: Product }) {
               <strong>Coverage is source-dependent</strong>
             </div>
             <p className="small" style={{ margin: "10px 0 0" }}>
-              All US states and Canadian provinces are searchable. A location in
-              the form does not guarantee available records.
+              {product === "domains"
+                ? "Worldwide discovery depends on permitted sources and independent website evidence. A short or empty shortlist can be the correct result."
+                : "All US states and Canadian provinces are searchable. A location in the form does not guarantee available records."}
             </p>
             <details className="search-example">
               <summary>Example search</summary>

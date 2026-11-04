@@ -1,22 +1,26 @@
 {
   "scanned": "2026-11-04",
+  "mode": "product corrections / custom brand refinement",
+  "branch": "feature/global-domain-discovery",
   "findings": {
-    "fonts": "Existing Arial/Inter fallback stack in src/app/globals.css:6,587; use locally hosted Albert Sans for new typography.",
-    "palette": "Existing #0866ed blue, #0b294c navy, #ffffff surface from src/app/globals.css:9-15.",
-    "motion": "motion 14.8 installed; no new motion dependency needed.",
-    "spacing": "Existing CSS inconsistent; introduce role tokens and 4px rhythm.",
-    "framework": "Next.js 16.4.3, React 19, Tailwind 4, Radix dialogs, Lucide, TypeScript."
+    "system": "Locked custom system in design.md; Albert Sans and blue/navy/white tokens in src/app/tokens.css:1",
+    "branding": "Approved root leadatlas-icon-v2.png; shared Brand in src/components/navigation.tsx:10",
+    "homepage": "src/app/page.tsx:1; preserve headline, render four requested independent paths",
+    "forms": "src/components/search-form.tsx:1; local searchable selectors and separate worldwide domain contract",
+    "results": "src/components/leads-table.tsx:1; preserve dense table, inspect/save/export actions"
   },
   "preserve": [
-    "Official PNG wordmark and icon",
-    "Brand blue, navy and white",
-    "Existing routes, form fields, handlers, APIs, theme persistence",
-    "All backend, workers, migrations and qualification rules"
+    "All existing routes and product IDs",
+    "Auth/tenant boundaries and source rights",
+    "Verification freshness, suppression, qualified CSV rules",
+    "Original uploads and previous committed redesign"
   ],
   "introduce": [
-    "Unified typography and spacing tokens",
-    "Task-first composition",
-    "Responsive dense tables and evidence drawer",
-    "Documented light/dark system"
-  ]
+    "Icon-only navigation and derived app icons",
+    "Four ordered discovery links",
+    "Sourced server-side geography and niche suggestions",
+    "Global candidate discovery and deterministic association matching",
+    "Durable discovery lease; additive migration only"
+  ],
+  "delete": []
 }

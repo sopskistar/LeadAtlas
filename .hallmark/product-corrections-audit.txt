@@ -1,0 +1,5 @@
+Final production render: 4 URLs, 4 source files, 20 Hallmark screenshots.
+Floor: 0 FAIL. Reflex: 0. Warnings: 0.
+Preservation: 22/23 links (1 intentional homepage removal), 11/14 fields (3 intentional removals), 3/6 handler expressions (3 replaced by controlled combobox handlers), 17/19 headings (2 intentional homepage copy changes), 1/1 figures.
+The user explicitly requested operator-only candidate controls, no geography/niche in the global domain form, and four homepage cards with lead management retained in the workspace.
+Eight responsive widths and protected evidence controls are exercised by Playwright.

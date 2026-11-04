@@ -9,8 +9,11 @@ export const metadata: Metadata = {
   description:
     "Business discovery with sourced contacts, explicit verification evidence, and quality-first lead exports.",
   icons: {
-    icon: "/brand/leadatlas-icon.png",
-    apple: "/brand/leadatlas-icon.png",
+    icon: [
+      { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/brand/apple-touch-icon.png",
   },
 };
 export default function RootLayout({

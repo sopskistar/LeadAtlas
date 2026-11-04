@@ -72,7 +72,7 @@ These are genuine licensed discovery samples, **not independently verified busin
 ## Product/operational acceptance still open
 
 - Resend verification/password-reset integration is now implemented; real credentials, sender verification and live delivery still require operator validation. Operator-specific legal identity/privacy contact remains missing. Complete these before public signup/paid launch.
-- No automatic Hunter 202 polling, global buyer discovery, full Canada bulk/API format support, 50-state registry feeds or automatic export-time refresh. Current bounded imported matching and conservative unverified outcomes are explicit.
+- No automatic Hunter 202 polling, live-accepted global buyer discovery, full Canada bulk/API format support, 50-state registry feeds or automatic export-time refresh. Current bounded imported matching and conservative unverified outcomes are explicit.
 - No monetary billing/credits, invoice-cost metrics, calibration/false-positive truth study or measured real-world bounce rate. Query budgets and run counts are real; money/accuracy figures are not invented.
 - No automated object-storage provisioning/upload/retention, scheduled coverage expansion, full headless website-function/malware analysis or production load/security audit.
 - Run `npm run cleanup` under a controlled scheduler and verify backups/restore and privacy deletion operations before production.
@@ -88,3 +88,7 @@ Continued clean `5e22388` on `frontend/hallmark-redesign`, with no backend/migra
 Hallmark rendered the initial nine routes, the final public routes and six protected routes. The final audit has **0 Floor failures and 0 open Reflex findings**. One preserved-content notice reflects the explicitly requested copy reduction; the shared-stylesheet Finish finding is answered. Desktop/mobile images, evidence views, the full audit method, execution caveats and remaining limits are in the [redesign report](HALLMARK_REDESIGN.md) and [standalone comparison](screenshots/hallmark/compare.html).
 
 No production push/deployment was performed. This is frontend review work, not a claim that missing live integrations are ready.
+
+## Product corrections release — 2026-11-04
+
+Lint, TypeScript, production build and all 159 unit/integration tests passed. Public browser coverage completed 38 cases with one initial timing retry; the unchanged geography test subsequently passed twice with retries disabled. All 10 authenticated desktop/mobile tests passed. Hallmark rendered checks report 0 Floor failures, 0 Reflex findings and 0 warnings. The new mobile domain table is independently checked at all eight widths, including actual Inspect interaction and evidence focus return. See [the implementation and execution record](PRODUCT_CORRECTIONS.md) and [before/after screenshots](screenshots/corrections/compare.html). Live integrations and production rollout remain separate acceptance work.

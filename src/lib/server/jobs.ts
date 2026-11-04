@@ -1,3 +1,4 @@
+import { validCategoryChoice } from "../reference/lookups";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
@@ -15,7 +16,38 @@ export function jobsConfigured() {
   );
 }
 export async function createJob(ownerId: string, raw: unknown, key: string) {
-  const input = searchSchema.parse(raw);
+  const requested =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const configured = limits();
+  const input = searchSchema.parse({
+    ...requested,
+    limit:
+      requested.limit ??
+      Math.min(
+        configured.SEARCH_INITIAL_RESULTS,
+        configured.MAX_SEARCH_RESULTS,
+      ),
+    queryBudget:
+      requested.queryBudget ??
+      Math.max(
+        configured.SEARCH_QUERY_BUDGET,
+        requested.product === "domains" && Array.isArray(requested.domains)
+          ? requested.domains.length +
+              Math.min(
+                configured.SEARCH_INITIAL_RESULTS,
+                requested.domains.length,
+              )
+          : 0,
+      ),
+  });
+  if (
+    input.product !== "domains" &&
+    input.categoryId &&
+    !validCategoryChoice(input.categoryId, input.niche)
+  )
+    throw new Error(
+      "The selected category does not match this niche. Choose it again or use a custom niche.",
+    );
   if (input.limit > limits().MAX_SEARCH_RESULTS)
     throw new Error("Result budget exceeds configured maximum");
   if (!/^[a-zA-Z0-9_-]{16,100}$/.test(key))

@@ -133,7 +133,11 @@ export function JobList() {
                         {productName(j.input.product)}
                       </Link>
                       <div className="small muted">
-                        {j.input.niche}, {j.input.city}, {j.input.region}
+                        {j.input.product === "domains"
+                          ? `${j.input.domains?.join(", ") ?? j.input.domain} / ${j.input.scope === "global" ? "Worldwide" : "Legacy regional search"}`
+                          : [j.input.niche, j.input.city, j.input.region]
+                              .filter(Boolean)
+                              .join(", ")}
                       </div>
                     </td>
                     <td data-label="Status">
@@ -198,7 +202,7 @@ function Pager({
 }
 export function JobDetail({ id }: { id: string }) {
   const [page, setPage] = useState(1);
-  const [quality, setQuality] = useState("QUALIFIED");
+  const [quality, setQuality] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -207,7 +211,10 @@ export function JobDetail({ id }: { id: string }) {
     records: BusinessRecord[];
     events: { stage: string; detail: string; createdAt: string }[];
     breakdown: { state: string; count: number }[];
-  }>(`/api/jobs/${id}?page=${page}&quality=${quality}`, 4000);
+  }>(
+    `/api/jobs/${id}?page=${page}${quality ? `&quality=${quality}` : ""}`,
+    4000,
+  );
   const data = resource.data;
   async function action(type: string) {
     setError("");
@@ -246,13 +253,21 @@ export function JobDetail({ id }: { id: string }) {
         <div>
           <h1>
             {data
-              ? `${data.job.input.niche}, ${data.job.input.city}`
+              ? data.job.input.product === "domains"
+                ? (data.job.input.domains?.join(", ") ?? data.job.input.domain)
+                : `${data.job.input.niche}, ${data.job.input.city}`
               : "Research job"}
           </h1>
           <p>
             {data && productName(data.job.input.product)}
             <br />
-            {data?.job.input.region}, {data?.job.input.country}
+            {data?.job.input.product === "domains"
+              ? data.job.input.scope === "global"
+                ? "Worldwide"
+                : "Legacy regional search"
+              : [data?.job.input.region, data?.job.input.country]
+                  .filter(Boolean)
+                  .join(", ")}
           </p>
         </div>
         <div className="row">
@@ -332,18 +347,30 @@ export function JobDetail({ id }: { id: string }) {
             </div>
             <div className="card table-card">
               <div className="table-toolbar">
-                <h3 style={{ margin: 0 }}>Business contacts</h3>
+                <h3 style={{ margin: 0 }}>
+                  {data.job.input.product === "domains"
+                    ? "Domain shortlist"
+                    : "Business contacts"}
+                </h3>
                 <label className="row">
                   View
                   <select
                     aria-label="View"
-                    value={quality}
+                    value={
+                      quality ||
+                      (data.job.input.product === "domains"
+                        ? "SHORTLIST"
+                        : "QUALIFIED")
+                    }
                     onChange={(e) => {
                       setQuality(e.target.value);
                       setPage(1);
                     }}
-                    style={{ width: 210 }}
+                    style={{ width: 250, maxWidth: "100%" }}
                   >
+                    {data.job.input.product === "domains" && (
+                      <option value="SHORTLIST">Domain shortlist</option>
+                    )}
                     <option value="QUALIFIED">Qualified only</option>
                     <option value="ALL">All research candidates</option>
                     <option value="NEEDS_REVIEW">Needs review</option>

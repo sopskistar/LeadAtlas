@@ -1,3 +1,6 @@
+import { validRegion } from "../core/locations";
+import { citySuggestions, nicheSuggestions } from "../reference/lookups";
+import { globalDiscoveryConfigured } from "../discovery/providers";
 import { randomUUID } from "node:crypto";
 import { and, eq, desc, sql, count, ilike } from "drizzle-orm";
 import { z } from "zod";
@@ -12,7 +15,6 @@ import {
   exports,
   sourceConfigs,
   audit,
-  geoPlaces,
   quotaCounters,
   user,
 } from "../db/schema";
@@ -141,6 +143,31 @@ export async function handleApi(req: Request, segments: string[]) {
   try {
     const url = new URL(req.url);
     const path = segments.join("/");
+    if (req.method === "GET" && (path === "cities" || path === "niches")) {
+      if (path === "niches")
+        return json({
+          suggestions: nicheSuggestions(url.searchParams.get("q") ?? ""),
+          attribution: "US Census Bureau, 2022 NAICS",
+        });
+      const country = url.searchParams.get("country") ?? "";
+      const region = url.searchParams.get("region") ?? "";
+      if (
+        !["US", "CA"].includes(country) ||
+        !validRegion(country as "US" | "CA", region)
+      )
+        throw new ApiError(
+          400,
+          "Choose a valid country and state or province.",
+        );
+      return json(
+        citySuggestions(
+          country,
+          region,
+          url.searchParams.get("q") ?? "",
+          Number(url.searchParams.get("offset") ?? 0),
+        ),
+      );
+    }
     if (req.method === "GET" && path === "status")
       return json({
         auth: authConfigured(),
@@ -148,6 +175,8 @@ export async function handleApi(req: Request, segments: string[]) {
           authConfigured() &&
           (process.env.NODE_ENV !== "production" || emailConfigured()),
         recovery: authConfigured() && emailConfigured(),
+        domainSearch:
+          authConfigured() && jobsConfigured() && globalDiscoveryConfigured(),
         search:
           authConfigured() && jobsConfigured() && !!process.env.HUNTER_API_KEY,
       });
@@ -197,27 +226,6 @@ export async function handleApi(req: Request, segments: string[]) {
         verifier: !!process.env.HUNTER_API_KEY,
         email: emailConfigured(),
         sources: sourceRegistry(),
-      });
-    }
-    if (req.method === "GET" && path === "cities") {
-      const rows = await db
-        .select({ city: geoPlaces.city })
-        .from(geoPlaces)
-        .where(
-          and(
-            eq(geoPlaces.country, url.searchParams.get("country") ?? "US"),
-            eq(geoPlaces.region, url.searchParams.get("region") ?? "NY"),
-            ilike(
-              geoPlaces.city,
-              `${escapeLike(url.searchParams.get("q") ?? "")}%`,
-            ),
-          ),
-        )
-        .limit(30);
-      return json({
-        cities: rows.map((r) => r.city),
-        coverageNote:
-          "Reference suggestions only. Any city can be entered; source coverage varies.",
       });
     }
     if (req.method === "GET" && path === "dashboard") {
@@ -308,9 +316,16 @@ export async function handleApi(req: Request, segments: string[]) {
     if (segments[0] === "jobs" && segments[1]) {
       const job = await ownedJob(segments[1], ownerId);
       if (req.method === "GET" && segments.length === 2) {
-        const quality = url.searchParams.get("quality") ?? "QUALIFIED";
+        const quality =
+          url.searchParams.get("quality") ??
+          (job.input.product === "domains" ? "SHORTLIST" : "QUALIFIED");
         const filters = [eq(jobItems.jobId, job.id)];
-        if (quality !== "ALL")
+        if (quality === "SHORTLIST")
+          filters.push(
+            sql`${jobItems.result}->'quality'->>'status' != 'REJECTED'`,
+            sql`${jobItems.result}->'domainMatch' IS NOT NULL`,
+          );
+        else if (quality !== "ALL")
           filters.push(
             sql`${jobItems.result}->'quality'->>'status' = ${quality}`,
           );
@@ -348,7 +363,13 @@ export async function handleApi(req: Request, segments: string[]) {
                   ]
                 : [],
             )
-            .filter((r) => quality === "ALL" || r.quality.status === quality),
+            .filter(
+              (r) =>
+                quality === "ALL" ||
+                (quality === "SHORTLIST"
+                  ? r.quality.status !== "REJECTED" && !!r.domainMatch
+                  : r.quality.status === quality),
+            ),
           events,
           breakdown,
           page,
@@ -392,6 +413,8 @@ export async function handleApi(req: Request, segments: string[]) {
             status: "QUEUED",
             error: null,
             stage: "Retry queued",
+            discoveryLeaseToken: null,
+            discoveryLeaseUntil: null,
             updatedAt: new Date(),
           })
           .where(

@@ -3,12 +3,11 @@ import Image from "next/image";
 import {
   ArrowUpRight,
   Globe2,
-  Building2,
   Activity,
   MailCheck,
   ShieldCheck,
 } from "lucide-react";
-import { ProductCards } from "@/components/catalog";
+import { products } from "@/components/catalog";
 import { Brand, PublicHeader } from "@/components/navigation";
 
 export default function Home() {
@@ -37,33 +36,34 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="hero-paths">
-            <Link className="hero-path" href="/business-contacts">
-              <Globe2 size={28} aria-hidden="true" />
-              <div>
-                <h2>Businesses With Websites</h2>
-                <p>Find website owners and research their contacts.</p>
-              </div>
-              <ArrowUpRight size={20} aria-hidden="true" />
-            </Link>
-            <Link className="hero-path" href="/website-opportunities">
-              <Building2 size={28} aria-hidden="true" />
-              <div>
-                <h2>Businesses Without Websites</h2>
-                <p>Find opportunities for a first independent website.</p>
-              </div>
-              <ArrowUpRight size={20} aria-hidden="true" />
-            </Link>
-          </div>
-          <p className="hero-caption">
-            United States &amp; Canada. Results depend on regional coverage.
-          </p>
         </section>
-        <section id="features" className="product-section section-anchor">
-          <div className="section-intro">
-            <h2>Find your next prospect.</h2>
-          </div>
-          <ProductCards />
+        <section
+          id="features"
+          className="discovery-grid section-anchor"
+          aria-label="Business discovery"
+        >
+          {products.map((product, index) => (
+            <Link
+              className="discovery-link"
+              href={product.path}
+              key={product.id}
+            >
+              <div>
+                <h2>{product.title}</h2>
+                <p>
+                  {
+                    [
+                      "Find active businesses with functioning websites and reliable public contact information.",
+                      "Discover active businesses without an identified website and find their public business contacts.",
+                      "Find businesses using related names or domain variations that may be upgrade prospects for your domain.",
+                      "Discover newly registered businesses and research their public presence and contacts.",
+                    ][index]
+                  }
+                </p>
+              </div>
+              <ArrowUpRight size={20} aria-hidden="true" />
+            </Link>
+          ))}
         </section>
         <section className="quality-section">
           <div>
@@ -167,7 +167,7 @@ export default function Home() {
               ],
               [
                 "Where can I search?",
-                "Search by country, state or province, city and niche in the United States and Canada. Available results depend on current regional coverage. Recently registered business coverage is limited and varies by jurisdiction.",
+                "Business searches cover the United States and Canada, with results dependent on regional sources. Domain Buyer Finder researches related domains worldwide. Newly registered business coverage varies by jurisdiction.",
               ],
               [
                 "Do I need to configure anything?",

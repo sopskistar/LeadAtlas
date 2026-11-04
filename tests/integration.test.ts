@@ -31,6 +31,7 @@ vi.mock("node:dns/promises", () => ({
 import { getAuth } from "../src/lib/server/auth";
 import { handleApi } from "../src/lib/server/api";
 import { discover, processBusiness, finish } from "../src/worker/pipeline";
+import { requestDiscovery } from "../src/worker/discovery-task";
 import { createJob, consumeProvider } from "../src/lib/server/jobs";
 import { safeFetch } from "../src/worker/safe-fetch";
 let cookie = "";
@@ -384,7 +385,7 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect(item.result!.quality!.activity).toBe("UNKNOWN");
     expect(item.result!.quality!.status).not.toBe("QUALIFIED");
   });
-  it("performs strict targeted domain matching on persistent business data", async () => {
+  it("resumes legacy regional domain jobs without rewriting their stored inputs", async () => {
     await importRow("Oceanwise", {
       websites: "https://getoceanwise.com",
       emails: "hello@getoceanwise.com",
@@ -406,6 +407,21 @@ describe("persisted account → permitted import → worker → qualified CSV", 
       },
       "test-targeted-domain-0001",
     );
+    // Simulate the pre-global JSON contract already present in stored jobs.
+    await database
+      .update(schema.jobs)
+      .set({
+        input: {
+          ...job.input,
+          scope: undefined,
+          country: "US",
+          region: "NY",
+          city: "New York",
+          niche: "*",
+          sources: ["imports"],
+        },
+      })
+      .where(eq(schema.jobs.id, job.id));
     const found = await discover(job.id);
     expect(found.ids).toHaveLength(1);
     const [item] = await database
@@ -413,6 +429,228 @@ describe("persisted account → permitted import → worker → qualified CSV", 
       .from(schema.jobItems)
       .where(eq(schema.jobItems.jobId, job.id));
     expect(item.result!.domainMatch!.tier).toBe("PREFIX_SUFFIX");
+  });
+  it("runs a separate worldwide discovery contract with explicitly simulated provider hints", async () => {
+    await importRow("Novalith Fixture", {
+      country: "DE",
+      region: "BE",
+      city: "Berlin",
+      websites: "https://novalithfixture.example",
+      emails: "hello@novalithfixture.example",
+    });
+    await importRow("Novalith Fixture Group", {
+      country: "AU",
+      region: "NSW",
+      city: "Sydney",
+      websites: "https://novalithfixturegroup.example",
+      emails: "hello@novalithfixturegroup.example",
+    });
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "fixture-only-key");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "true");
+    // All fetch calls are stubbed by this suite; no provider traffic or live prospects.
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ web: { results: [] } }),
+    );
+    const job = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "novalithfixture.com",
+        ownershipAffirmed: true,
+        queryBudget: 1,
+      },
+      "test-global-domain-0001",
+    );
+    expect(job.input).toMatchObject({ scope: "global", domainKind: "auto" });
+    expect(job.input).not.toHaveProperty("country");
+    expect(job.input).not.toHaveProperty("niche");
+    const found = await discover(job.id);
+    expect(found.ids).toHaveLength(2);
+    const items = await database
+      .select()
+      .from(schema.jobItems)
+      .where(eq(schema.jobItems.jobId, job.id));
+    expect(items.map((i) => i.result!.country).sort()).toEqual(["AU", "DE"]);
+    const other = await signup("global-tenant@test.example");
+    expect(
+      (await request(`jobs/${job.id}`, "GET", undefined, other.cookie)).status,
+    ).toBe(404);
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "false");
+    const unavailable = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "novalithfixture.com",
+        ownershipAffirmed: true,
+      },
+      "test-global-unavailable-001",
+    );
+    await expect(discover(unavailable.id)).rejects.toThrow("unavailable");
+    expect(
+      (
+        await database
+          .select()
+          .from(schema.jobItems)
+          .where(eq(schema.jobItems.jobId, unavailable.id))
+      ).length,
+    ).toBe(0);
+  });
+  it("discovers independently permitted first-party businesses without retaining search snippets", async () => {
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "fixture-only-key");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "true");
+    const host = "quillora-fixture.example";
+    const [permission] = await database
+      .select()
+      .from(schema.sourceConfigs)
+      .where(
+        and(
+          eq(schema.sourceConfigs.ownerId, ownerId),
+          eq(schema.sourceConfigs.source, "website"),
+        ),
+      );
+    await database
+      .update(schema.sourceConfigs)
+      .set({
+        enabled: true,
+        policy: {
+          ...permission.policy,
+          approvedHosts: [...permission.policy.approvedHosts, host],
+        },
+      })
+      .where(
+        and(
+          eq(schema.sourceConfigs.ownerId, ownerId),
+          eq(schema.sourceConfigs.source, "website"),
+        ),
+      );
+    const body = `<html><head><title>Quillora Fixture</title><script type="application/ld+json">{"@type":"Organization","name":"Quillora Fixture","url":"https://${host}"}</script></head><body><h1>Quillora Fixture</h1><p>A fictional professional business used only by deterministic automated tests. This sufficiently detailed business page describes services and appointment availability. No real company, email recipient or provider is contacted during this test.</p><a href="/services">Services</a><a href="mailto:hello@${host}">Office</a><time datetime="${new Date().toISOString()}">Fixture date</time></body></html>`;
+    vi.mocked(safeFetch).mockImplementation(async (url) => ({
+      status: 200,
+      url,
+      body: url.endsWith("robots.txt") ? "User-agent: *\nAllow: /" : body,
+      contentType: url.endsWith("robots.txt") ? "text/plain" : "text/html",
+    }));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({
+        web: {
+          results: [
+            {
+              url: `https://${host}`,
+              title: "UNTRUSTED SERP NAME",
+              description: "UNTRUSTED PROVIDER CONTACT",
+            },
+          ],
+        },
+      }),
+    );
+    const job = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "quillorafixture.com",
+        ownershipAffirmed: true,
+        queryBudget: 1,
+      },
+      "test-global-firstparty-001",
+    );
+    const found = await discover(job.id);
+    expect(found.ids).toHaveLength(1);
+    const [record] = await database
+      .select()
+      .from(schema.businesses)
+      .where(eq(schema.businesses.id, found.ids[0]));
+    expect(record.record.name).toBe("Quillora Fixture");
+    expect(record.record.country).toBe("");
+    expect(record.record.website?.identity).toBe(true);
+    expect(record.record.contacts[0].email).toBe(`hello@${host}`);
+    expect(JSON.stringify(record.record)).not.toContain("UNTRUSTED");
+    expect(record.record.quality?.status).not.toBe("QUALIFIED"); // first-party alone is insufficient
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ web: { results: [{ url: `https://${host}` }] } }),
+    );
+    const duplicate = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "quillorafixture.com",
+        ownershipAffirmed: true,
+        queryBudget: 1,
+      },
+      "test-global-firstparty-002",
+    );
+    expect((await discover(duplicate.id)).ids).toEqual(found.ids);
+    const assessResult = await processBusiness(job.id, record.id);
+    expect(assessResult.status).not.toBe("QUALIFIED");
+    vi.mocked(safeFetch).mockImplementation(async (url) => ({
+      status: 200,
+      url,
+      body: url.endsWith("robots.txt") ? "User-agent: *\nAllow: /" : page,
+      contentType: url.endsWith("robots.txt") ? "text/plain" : "text/html",
+    }));
+    await database
+      .update(schema.sourceConfigs)
+      .set({ policy: permission.policy })
+      .where(
+        and(
+          eq(schema.sourceConfigs.ownerId, ownerId),
+          eq(schema.sourceConfigs.source, "website"),
+        ),
+      );
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "false");
+  });
+  it("polls global discovery under one renewable lease and fences a superseded writer", async () => {
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "fixture-only-key");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "true");
+    let release!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(fetch).mockImplementationOnce(() => pending);
+    const job = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "unmatchedfixture.com",
+        ownershipAffirmed: true,
+        queryBudget: 1,
+      },
+      "test-global-lease-0001",
+    );
+    expect(await requestDiscovery(job.id)).toEqual({ status: "IN_PROGRESS" });
+    expect(await requestDiscovery(job.id)).toEqual({ status: "IN_PROGRESS" });
+    release(Response.json({ web: { results: [] } }));
+    await vi.waitFor(async () => {
+      expect((await requestDiscovery(job.id)).status).toBe("DONE");
+    });
+    const [done] = await database
+      .select()
+      .from(schema.jobs)
+      .where(eq(schema.jobs.id, job.id));
+    expect(done.discovered).toBe(0);
+    const superseded = await createJob(
+      ownerId,
+      {
+        product: "domains",
+        domain: "unmatchedfixture.com",
+        ownershipAffirmed: true,
+        queryBudget: 1,
+      },
+      "test-global-lease-0002",
+    );
+    await database
+      .update(schema.jobs)
+      .set({ discoveryLeaseToken: "new-worker-token" })
+      .where(eq(schema.jobs.id, superseded.id));
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({ web: { results: [] } }),
+    );
+    await expect(discover(superseded.id, "old-worker-token")).rejects.toThrow(
+      "superseded",
+    );
+    vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
+    vi.stubEnv("BRAVE_DISCOVERY_APPROVED", "false");
   });
   it("rejects cross-tenant reads/writes, source changes by nonadmins and cross-origin mutations", async () => {
     const other = await signup("other@test.example");

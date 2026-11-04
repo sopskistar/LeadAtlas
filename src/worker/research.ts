@@ -99,7 +99,8 @@ export async function researchWebsite(
         !home.contentType.includes("text/html") ||
         page.blocked ||
         !page.functional ||
-        !normalizeName(page.text).includes(normalizeName(record.city)) ||
+        (record.researchScope !== "global" &&
+          !normalizeName(page.text).includes(normalizeName(record.city))) ||
         /\b(directory|chamber of commerce|business listings)\b/i.test(
           page.title,
         )

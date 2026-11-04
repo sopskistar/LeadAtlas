@@ -84,6 +84,8 @@ export const jobs = pgTable(
     qualified: integer().notNull().default(0),
     duplicates: integer().notNull().default(0),
     error: text(),
+    discoveryLeaseToken: text("discovery_lease_token"),
+    discoveryLeaseUntil: time("discovery_lease_until"),
     createdAt: time("created_at").notNull().defaultNow(),
     updatedAt: time("updated_at").notNull().defaultNow(),
   },

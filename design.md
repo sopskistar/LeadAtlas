@@ -40,3 +40,13 @@ Sidebar earned by nine workspace destinations; below 960px, use the existing acc
 ## Exports
 
 `src/app/tokens.css`, `src/app/base.css`, `src/app/globals.css`. No new runtime dependencies. Font and license: `public/fonts/`.
+
+## Product corrections, 2026-11-04
+
+The approved navigation identity is **`leadatlas-icon-v2.png` alone**, with no attached or adjacent brand text. Use the shared `Brand` component: 48px desktop, 40px mobile, accessible link name “LeadAtlas home”, decorative empty image alt. The original uploaded PNG remains untouched; the production copy removes transparent margins and derives favicons/app icons at 16, 24, 32, 64, 180, 192 and 512px. Dark navigation keeps a compact white backing so the approved navy strokes remain legible. Titles and metadata retain LeadAtlas.
+
+Immediately after the hero, four discovery links form two columns in source order: With Websites, Without Websites, Domain Buyer Finder, New Business Finder. The second row aligns domains under with-websites and new-business under without-websites. On mobile all four stack in that order. Lead Management & Export remains the fifth workspace feature.
+
+Search controls share one accessible editable combobox. Country and region commit a predefined value; city and niche accept both a suggestion and arbitrary custom text. Changes of selected country/region clear the city and abort stale requests. Listboxes expose selected/active choices, arrow/Enter/Escape interaction, loading/error/empty states and visible source attribution. Popovers are anchored to their field, use the existing surface/tokens, and contain their scroll. Native form labels/required validation stay visible. Engineering candidate/query budgets are server defaults.
+
+Domain research is a worldwide task, with a domain first, automatic strategy, portfolio upload, professional context and collapsed optional filters. Its table separates relationship strength from business/contact qualification. Evidence and email states never masquerade as buying intent. Dense columns use a named keyboard-scrollable table on small screens; no data disappears to make it fit.

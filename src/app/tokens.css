@@ -76,6 +76,7 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --shadow-dialog: 0 8px 24px var(--color-overlay);
   --z-sticky: 20;
   --z-sticky-nav: 30;
   --z-modal: 50;

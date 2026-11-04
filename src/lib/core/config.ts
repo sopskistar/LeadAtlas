@@ -6,6 +6,8 @@ const positive = (fallback: number, max: number) =>
   );
 const limitsSchema = z.object({
   MAX_SEARCH_RESULTS: positive(50, 100),
+  SEARCH_INITIAL_RESULTS: positive(10, 100),
+  SEARCH_QUERY_BUDGET: positive(20, 200),
   DAILY_SEARCH_BUDGET: positive(500, 100000),
   PROVIDER_DAILY_LIMIT: positive(500, 100000),
   INGEST_BATCH_LIMIT: positive(500, 1000),

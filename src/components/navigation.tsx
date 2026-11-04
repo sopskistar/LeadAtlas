@@ -16,10 +16,10 @@ export function Brand({ compact = false }: { compact?: boolean }) {
     >
       <Image
         className="logo"
-        src="/brand/leadatlas-wordmark.png"
-        width={202}
-        height={72}
-        alt="LeadAtlas"
+        src="/brand/leadatlas-icon-v2.png"
+        width={64}
+        height={64}
+        alt=""
         priority
       />
     </Link>

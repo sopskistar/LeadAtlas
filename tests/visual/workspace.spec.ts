@@ -1,7 +1,18 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Cookie } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+// Reuse a real session within each worker, as a customer would. Repeated login
+// attempts must not bypass or weaken the production authentication rate limits.
+let authenticatedCookies: Cookie[] = [];
 test.beforeEach(async ({ page }) => {
+  if (authenticatedCookies.length) {
+    await page.context().addCookies(authenticatedCookies);
+    await page.goto("/dashboard");
+    await expect(
+      page.getByRole("link", { name: "Sample workspace", exact: true }),
+    ).toBeVisible();
+    return;
+  }
   await page.goto("/sign-in");
   await page
     .getByLabel("Email address", { exact: true })
@@ -18,6 +29,7 @@ test.beforeEach(async ({ page }) => {
   await page
     .context()
     .storageState({ path: "/tmp/leadatlas-visual-auth.json" });
+  authenticatedCookies = await page.context().cookies();
 });
 
 test("protected screens render, retain all data on mobile, and pass axe in both themes", async ({
@@ -62,7 +74,9 @@ test("protected screens render, retain all data on mobile, and pass axe in both 
       ).toEqual([]);
       expect(
         await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
         ),
         path,
       ).toBe(true);
@@ -124,12 +138,18 @@ test("saved research filters, evidence, notes and export exclusions work through
   expect(await exported.text()).not.toContain("hello@alpha.example");
 });
 
-test("all finder fields submit unchanged contracts with a clearly intercepted service fixture", async ({
+test("finder contracts preserve local fields and submit worldwide domains with a clearly intercepted service fixture", async ({
   page,
 }) => {
   await page.route("**/api/status", (route) =>
     route.fulfill({
-      json: { auth: true, search: true, registration: false, recovery: false },
+      json: {
+        auth: true,
+        search: true,
+        domainSearch: true,
+        registration: false,
+        recovery: false,
+      },
     }),
   );
   const payloads: Record<string, unknown>[] = [];
@@ -150,10 +170,11 @@ test("all finder fields submit unchanged contracts with a clearly intercepted se
     ["/new-businesses", "new"],
   ]) {
     await page.goto(path);
-    await page
-      .getByLabel("City", { exact: true })
-      .fill(product === "new" ? "Toronto" : "New York");
-    if (product === "contacts" || product === "opportunities")
+    if (product !== "domains")
+      await page
+        .getByLabel("City", { exact: true })
+        .fill(product === "new" ? "Toronto" : "New York");
+    if (product !== "domains")
       await page.getByLabel("Business niche", { exact: true }).fill("plumber");
     if (product === "domains") {
       await page.getByLabel("Your domain", { exact: true }).fill("example.com");
@@ -171,14 +192,17 @@ test("all finder fields submit unchanged contracts with a clearly intercepted se
     );
     expect(payloads.at(-1)).toMatchObject({
       product,
-      limit: 10,
-      queryBudget: 20,
     });
+    expect(payloads.at(-1)).not.toHaveProperty("limit");
+    expect(payloads.at(-1)).not.toHaveProperty("queryBudget");
     if (product === "domains") {
+      for (const key of ["country", "region", "city", "niche"])
+        expect(payloads.at(-1)).not.toHaveProperty(key);
       expect(payloads.at(-1)).toMatchObject({
         domain: "example.com",
         ownershipAffirmed: true,
-        domainKind: "brandable",
+        domainKind: "auto",
+        scope: "global",
       });
       await page.locator('input[type="file"]').setInputFiles({
         name: "sample-portfolio.csv",
@@ -224,7 +248,9 @@ test("research rows and evidence remain usable at Hallmark's eight widths", asyn
     ).toBeVisible();
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
       ),
     ).toBe(true);
     await page
@@ -239,7 +265,9 @@ test("research rows and evidence remain usable at Hallmark's eight widths", asyn
     await expect(page.getByLabel("Research notes")).toBeVisible();
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
       ),
     ).toBe(true);
     await page.screenshot({
@@ -257,4 +285,104 @@ test("research rows and evidence remain usable at Hallmark's eight widths", asyn
     });
   }
   expect(errors).toEqual([]);
+});
+
+test("worldwide domain results expose relationship, evidence and verification without implying intent", async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  await page.goto("/searches/visual-domain-search");
+  await expect(page.locator("h1")).toHaveText("novalithfixture.com");
+  await expect(
+    page.locator("main p").filter({ hasText: "Worldwide" }).first(),
+  ).toBeVisible();
+  await expect(page.getByLabel("View", { exact: true })).toHaveValue(
+    "SHORTLIST",
+  );
+  await page.getByLabel("View", { exact: true }).selectOption("ALL");
+  const table = page.getByRole("region", {
+    name: "Domain buyer research table",
+  });
+  await expect(
+    table.getByText("Novalith Fixture", { exact: true }),
+  ).toBeVisible();
+  for (const name of [
+    "Current website",
+    "Domain relationship",
+    "Website / business",
+    "Last checked",
+  ])
+    await expect(
+      table.getByRole("columnheader", { name, exact: true }),
+    ).toBeAttached();
+  for (const theme of ["light", "dark"]) {
+    await page
+      .getByRole("combobox", { name: "Color theme", exact: true })
+      .first()
+      .selectOption(theme);
+    const result = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(result.violations.map((v) => v.id)).toEqual([]);
+    await page.screenshot({
+      path: `.hallmark/validation/domain-results-${info.project.name}-${theme}.png`,
+      fullPage: true,
+    });
+  }
+  const originalViewport = page.viewportSize()!;
+  for (const width of [320, 375, 414, 768, 1024, 1280, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+      `domain table ${width}`,
+    ).toBe(true);
+    await page.screenshot({
+      path: `.hallmark/validation/domain-width-${info.project.name}-${width}.png`,
+      fullPage: true,
+    });
+  }
+  await page.setViewportSize(originalViewport);
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await table
+      .locator("table")
+      .evaluate((element) => getComputedStyle(element).display),
+  ).toBe("table");
+  expect(
+    await table
+      .locator("td")
+      .nth(1)
+      .evaluate((element) => getComputedStyle(element, "::before").content),
+  ).toBe("none");
+  await table.focus();
+  await expect(table).toBeFocused();
+  if (info.project.name === "mobile") {
+    await table.press("ArrowRight");
+    await table.press("ArrowRight");
+    await expect
+      .poll(() => table.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(0);
+  }
+  await table.getByRole("button", { name: "Inspect", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Researched domain: novalithfixture.com");
+  await expect(dialog).toContainText("no evidence of buying intent");
+  await page.screenshot({
+    path: `.hallmark/validation/domain-evidence-${info.project.name}.png`,
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+  await expect(
+    table.getByRole("button", { name: "Inspect", exact: true }),
+  ).toBeFocused();
 });

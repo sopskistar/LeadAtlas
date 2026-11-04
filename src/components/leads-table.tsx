@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { SearchX, X, Copy, Bookmark, SearchCheck } from "lucide-react";
 import { api, Badge, Button, ErrorNotice } from "./ui";
+import { domainMatchStatus } from "@/lib/core/domain";
 import type { BusinessRecord, Product } from "@/lib/core/types";
 type ManagedRecord = BusinessRecord & { tags?: string[]; notes?: string };
 export function LeadsTable({
@@ -56,18 +57,37 @@ export function LeadsTable({
         </div>
       )}
       <div
-        className="table-wrap"
+        className={
+          product === "domains" ? "table-wrap domain-table-wrap" : "table-wrap"
+        }
         tabIndex={0}
         role="region"
-        aria-label="Business contacts table"
+        aria-label={
+          product === "domains"
+            ? "Domain buyer research table"
+            : "Business contacts table"
+        }
       >
         {records.length ? (
-          <table className="contacts-table" role="table">
+          <table
+            className={
+              product === "domains" ? "domain-table" : "contacts-table"
+            }
+            role="table"
+          >
             <thead>
               <tr>
                 <th>Business name</th>
+                {product === "domains" && (
+                  <>
+                    <th>Current website</th>
+                    <th>Domain relationship</th>
+                    <th>Website / business</th>
+                  </>
+                )}
                 <th>Public business email</th>
                 <th>Qualification</th>
+                {product === "domains" && <th>Last checked</th>}
                 <th>Evidence</th>
                 <th>
                   <span className="sr-only">Save</span>
@@ -80,10 +100,48 @@ export function LeadsTable({
                   <td>
                     <strong>{r.name}</strong>
                     <div className="muted small">
-                      {r.city}, {r.region} / {r.niche}
+                      {[r.city, r.region, r.country, r.niche]
+                        .filter(Boolean)
+                        .join(" / ") || "Location not established"}
                     </div>
                     {r.fixture && <Badge value="DEMO FIXTURE" />}
                   </td>
+                  {product === "domains" && (
+                    <>
+                      <td>
+                        {r.websites[0] ? (
+                          <a
+                            className="link"
+                            href={r.websites[0]}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {new URL(r.websites[0]).hostname}
+                          </a>
+                        ) : (
+                          "Not established"
+                        )}
+                      </td>
+                      <td>
+                        <Badge value={domainMatchStatus(r)} />
+                        <p className="small domain-match-reason">
+                          {r.domainMatch?.reasons[0] ??
+                            "No supported domain relationship"}
+                        </p>
+                        <span className="small muted">
+                          {r.domainMatch?.domain}
+                        </span>
+                      </td>
+                      <td>
+                        <Badge value={r.website?.status ?? "UNKNOWN"} />
+                        <div className="small muted">
+                          {r.quality?.activity
+                            ?.replaceAll("_", " ")
+                            .toLowerCase() ?? "Activity unknown"}
+                        </div>
+                      </td>
+                    </>
+                  )}
                   <td>
                     {r.contacts[0] ? (
                       <>
@@ -112,6 +170,13 @@ export function LeadsTable({
                       value={r.quality?.status ?? "PENDING_VERIFICATION"}
                     />
                   </td>
+                  {product === "domains" && (
+                    <td>
+                      {r.website?.checkedAt
+                        ? new Date(r.website.checkedAt).toLocaleDateString()
+                        : "Not checked"}
+                    </td>
+                  )}
                   <td>
                     <Button
                       variant="text"
@@ -282,6 +347,8 @@ export function LeadsTable({
                     <>
                       <dt>Domain association</dt>
                       <dd>
+                        <Badge value={domainMatchStatus(selected)} />
+                        <p>Researched domain: {selected.domainMatch.domain}</p>
                         <Badge value={selected.domainMatch.tier} />
                         <p className="small">
                           {selected.domainMatch.reasons.join(". ")}

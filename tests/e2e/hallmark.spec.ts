@@ -18,7 +18,9 @@ test("Hallmark widths keep the primary action, navigation, forms and content usa
       await page.evaluate(() => document.fonts.ready);
       expect(
         await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
         ),
         `${path} ${width}`,
       ).toBe(true);
