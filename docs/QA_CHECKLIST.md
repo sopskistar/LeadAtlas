@@ -80,3 +80,11 @@ These are genuine licensed discovery samples, **not independently verified busin
 ## Human beta plan
 
 Use a small reviewer-approved US and Canadian cohort. Independently check identity, trading activity, exact contact association, site category and source rights before accepting a qualified claim. Review closed/broken/social-only/catch-all/ambiguous examples deliberately. Ask users to flag wrong business, wrong email, bounce, closure and opt-out in the evidence drawer; verify immediate exclusion on re-export. Record reviewer truth and authorized sending feedback separately; report false-positive and bounce rates only after actual observations. Never send test emails to strangers to measure deliverability.
+
+## Hallmark frontend redesign, 2026-11-04
+
+Continued clean `5e22388` on `frontend/hallmark-redesign`, with no backend/migration/provider changes. Lint, strict TypeScript, production build and all **131 unit/integration tests** passed. **30 public browser tests** passed in a final fresh-server CI-mode run; **8 authenticated production browser tests** passed using actual Better Auth, migrated isolated PostgreSQL and nonexportable test fixtures. Additional screenshot/focus capture checks passed. All **68 automated route/theme/device accessibility analyses** passed. Live services remain untested.
+
+Hallmark rendered the initial nine routes, the final public routes and six protected routes. The final audit has **0 Floor failures and 0 open Reflex findings**. One preserved-content notice reflects the explicitly requested copy reduction; the shared-stylesheet Finish finding is answered. Desktop/mobile images, evidence views, the full audit method, execution caveats and remaining limits are in the [redesign report](HALLMARK_REDESIGN.md) and [standalone comparison](screenshots/hallmark/compare.html).
+
+No production push/deployment was performed. This is frontend review work, not a claim that missing live integrations are ready.

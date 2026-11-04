@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-04",
+  "base": "5e22388",
+  "branch": "frontend/hallmark-redesign",
+  "lint": "pass",
+  "typecheck": "pass",
+  "unit_integration": {
+    "passed": 131,
+    "files": 11
+  },
+  "production_build": "pass",
+  "public_browser": {
+    "passed_unique": 30,
+    "execution": "30 passed in final CI-mode run with fresh test server"
+  },
+  "authenticated_browser": {
+    "passed_unique": 8,
+    "database": "isolated PostgreSQL 17, real migrations and Better Auth",
+    "fixtures": true
+  },
+  "axe_route_theme_device_checks": 68,
+  "hallmark_widths": [320, 375, 414, 768, 1024, 1280, 1440, 1920],
+  "hallmark": {
+    "homepage": {
+      "floor": 0,
+      "reflex": 0,
+      "warn": 0,
+      "answered": 1,
+      "note": 1
+    },
+    "public_preservation": {
+      "floor": 0,
+      "reflex": 0,
+      "warn": 1,
+      "reason": "deliberate copy reduction, reviewed"
+    },
+    "protected": {
+      "floor": 0,
+      "reflex": 0,
+      "warn": 0
+    }
+  },
+  "backend_files_changed": false,
+  "production_deployed": false
+}

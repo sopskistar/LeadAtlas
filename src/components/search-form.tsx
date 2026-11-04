@@ -87,16 +87,16 @@ export function SearchForm({ product }: { product: Product }) {
   return (
     <>
       <div className="page-intro">
-        <div className="eyebrow">
-          {product === "domains"
-            ? "Targeted identity research"
-            : product === "new"
-              ? "Registry discovery"
-              : "Local business discovery"}
-        </div>
         <h1>{item.title}</h1>
-        <p>{item.desc}</p>
-        <div className="search-example">{item.example}</div>
+        <p>
+          {product === "contacts"
+            ? "Research website owners and their public business contacts."
+            : product === "opportunities"
+              ? "Research operating businesses without an identified independent website."
+              : product === "domains"
+                ? "Find close existing-domain and business-name matches."
+                : "Research recent incorporation records in supported regions."}
+        </p>
       </div>
       <div className="tool-layout">
         <div className="stack">
@@ -118,14 +118,11 @@ export function SearchForm({ product }: { product: Product }) {
               to start a search and keep your research together.
             </div>
           )}
-          <form className="card stack" onSubmit={submit}>
-            <div>
-              <h2 style={{ marginBottom: 5 }}>Define your search</h2>
-              <p className="small" style={{ margin: 0 }}>
-                Start with a focused location and niche. We’ll check each result
-                before it qualifies.
-              </p>
-            </div>
+          <form
+            className="search-form stack"
+            onSubmit={submit}
+            aria-busy={busy}
+          >
             <ErrorNotice message={error} />
             <div className="formgrid">
               {product === "domains" && (
@@ -297,7 +294,7 @@ export function SearchForm({ product }: { product: Product }) {
               {product === "opportunities" &&
                 " A missing website field alone is never treated as proof that a business has no website."}
             </div>
-            <div className="row between">
+            <div className="row between search-submit">
               <span className="small muted">
                 Results depend on available regional coverage.
               </span>
@@ -323,45 +320,51 @@ export function SearchForm({ product }: { product: Product }) {
             </section>
           )}
         </div>
-        <aside className="card">
-          <h3>How qualification works</h3>
-          <ol className="step-list" style={{ marginTop: 22 }}>
-            {[
-              [
-                "Discover",
-                "Use permitted records matching your location and niche.",
-              ],
-              [
-                "Check the business",
-                "Corroborate current activity; keep contradictions for review.",
-              ],
-              [
-                "Research the contact",
-                "Confirm the website category and exact business association.",
-              ],
-              [
-                "Verify & export",
-                "Recent verification and quality checks decide what qualifies.",
-              ],
-            ].map(([t, d], i) => (
-              <li key={t}>
-                <span className="step-number">{i + 1}</span>
-                <div>
-                  <strong className="small">{t}</strong>
-                  <p>{d}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <hr className="divider" />
-          <div className="row small">
-            <Info size={15} />
-            <strong>Coverage is source-dependent</strong>
-          </div>
-          <p className="small" style={{ margin: "10px 0 0" }}>
-            All US states and Canadian provinces are searchable. A location in
-            the form does not guarantee available records.
-          </p>
+        <aside className="search-notes">
+          <details>
+            <summary>Qualification &amp; coverage</summary>
+            <ol className="step-list" style={{ marginTop: 16 }}>
+              {[
+                [
+                  "Discover",
+                  "Use permitted records matching your location and niche.",
+                ],
+                [
+                  "Check the business",
+                  "Corroborate current activity; keep contradictions for review.",
+                ],
+                [
+                  "Research the contact",
+                  "Confirm the website category and exact business association.",
+                ],
+                [
+                  "Verify & export",
+                  "Recent verification and quality checks decide what qualifies.",
+                ],
+              ].map(([t, d], i) => (
+                <li key={t}>
+                  <span className="step-number">{i + 1}</span>
+                  <div>
+                    <strong className="small">{t}</strong>
+                    <p>{d}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <hr className="divider" />
+            <div className="row small">
+              <Info size={15} />
+              <strong>Coverage is source-dependent</strong>
+            </div>
+            <p className="small" style={{ margin: "10px 0 0" }}>
+              All US states and Canadian provinces are searchable. A location in
+              the form does not guarantee available records.
+            </p>
+            <details className="search-example">
+              <summary>Example search</summary>
+              <p className="small">{item.example}</p>
+            </details>
+          </details>
         </aside>
       </div>
     </>

@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ThemeSwitcher } from "./theme";
 import { features } from "./catalog";
 
@@ -72,7 +72,7 @@ export function PublicHeader() {
     <header className="landing-nav">
       <Brand />
       <nav className="public-links" aria-label="Main navigation">
-        <Link href="/#features">Features</Link>
+        <Link href="/#features">Finders</Link>
         <Link href="/#how-it-works">How it works</Link>
         <Link href="/#who-its-for">Who it’s for</Link>
       </nav>
@@ -82,11 +82,11 @@ export function PublicHeader() {
           Sign in
         </Link>
         <Link className="button desktop-cta" href="/sign-up">
-          Get started <ArrowUpRight size={16} />
+          Get started
         </Link>
         <MobileMenu>
           <nav aria-label="Mobile navigation" className="mobile-links">
-            <Link href="/#features">Features</Link>
+            <Link href="/#features">Finders</Link>
             <Link href="/#how-it-works">How it works</Link>
             <Link href="/#who-its-for">Who it’s for</Link>
             <hr className="divider" />

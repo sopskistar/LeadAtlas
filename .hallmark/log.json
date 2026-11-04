@@ -1,0 +1,33 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "site",
+  "shape": "research desk",
+  "theme": "custom",
+  "brand": "LeadAtlas",
+  "axes": "light/grotesk/cool",
+  "posture": "restrained",
+  "hero": "custom index",
+  "nav": "contained public navigation and existing workspace sidebar",
+  "footer": "compact legal row",
+  "imagery": "captured product",
+  "photos": [],
+  "entry": "src/app/page.tsx",
+  "fingerprint": "research index / open rows / evidence surface / product capture / native disclosure",
+  "sections": [
+   "finder paths",
+   "feature index",
+   "qualification evidence",
+   "product tour",
+   "audiences",
+   "FAQ",
+   "footer"
+  ],
+  "signature": "two distinct website finder paths",
+  "waived": [],
+  "prompt": "Full custom-brand LeadAtlas frontend redesign preserving all backend wiring",
+  "sweep": "0 Floor failures, 0 open Reflex findings; copy-reduction notice reviewed; in-thread finish review",
+  "date": "2026-11-04"
+ }
+]

@@ -3,7 +3,7 @@ import "./globals.css";
 import { themeScript } from "@/lib/core/theme-script";
 export const metadata: Metadata = {
   title: {
-    default: "LeadAtlas — Better Leads. Better Opportunities.",
+    default: "LeadAtlas | Business research",
     template: "%s | LeadAtlas",
   },
   description:
@@ -21,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <style>{`/* Hallmark · theme: custom · hero: custom index · job: sign up · posture: restrained · v2.0.0 */`}</style>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>

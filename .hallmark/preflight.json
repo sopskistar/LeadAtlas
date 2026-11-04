@@ -1,0 +1,22 @@
+{
+  "scanned": "2026-11-04",
+  "findings": {
+    "fonts": "Existing Arial/Inter fallback stack in src/app/globals.css:6,587; use locally hosted Albert Sans for new typography.",
+    "palette": "Existing #0866ed blue, #0b294c navy, #ffffff surface from src/app/globals.css:9-15.",
+    "motion": "motion 14.8 installed; no new motion dependency needed.",
+    "spacing": "Existing CSS inconsistent; introduce role tokens and 4px rhythm.",
+    "framework": "Next.js 16.4.3, React 19, Tailwind 4, Radix dialogs, Lucide, TypeScript."
+  },
+  "preserve": [
+    "Official PNG wordmark and icon",
+    "Brand blue, navy and white",
+    "Existing routes, form fields, handlers, APIs, theme persistence",
+    "All backend, workers, migrations and qualification rules"
+  ],
+  "introduce": [
+    "Unified typography and spacing tokens",
+    "Task-first composition",
+    "Responsive dense tables and evidence drawer",
+    "Documented light/dark system"
+  ]
+}

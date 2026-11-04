@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { Search, Download, Bookmark, History } from "lucide-react";
+import { Download } from "lucide-react";
 import { ProductCards, productName } from "./catalog";
 import { LeadsTable } from "./leads-table";
 import { api, Badge, Button, ErrorNotice, Loading, useResource } from "./ui";
@@ -34,12 +34,7 @@ export function Dashboard() {
   return (
     <div className="stack">
       <div className="page-intro">
-        <div className="eyebrow">Your research workspace</div>
-        <h1>Start with the right business.</h1>
-        <p>
-          Choose a focused finder, inspect the evidence, and save the contacts
-          that meet your standard.
-        </p>
+        <h1>Overview</h1>
       </div>
       <ErrorNotice message={error} />
       {loading ? (
@@ -48,18 +43,14 @@ export function Dashboard() {
         data && (
           <div className="metric-grid">
             {[
-              ["Searches", data.searches, Search],
-              ["Research candidates", data.candidates, History],
-              ["Saved leads", data.saved, Bookmark],
-              ["CSV exports", data.exports, Download],
-            ].map(([label, value, Icon]) => {
-              const I = Icon as typeof Search;
+              ["Searches", data.searches],
+              ["Research candidates", data.candidates],
+              ["Saved leads", data.saved],
+              ["CSV exports", data.exports],
+            ].map(([label, value]) => {
               return (
-                <div className="card" key={String(label)}>
-                  <div className="row between">
-                    <span className="small muted">{String(label)}</span>
-                    <I size={16} />
-                  </div>
+                <div key={String(label)}>
+                  <span className="small muted">{String(label)}</span>
                   <div className="metric">{String(value)}</div>
                 </div>
               );
@@ -67,28 +58,26 @@ export function Dashboard() {
           </div>
         )
       )}
-      <ProductCards />
-      <div className="card onboarding">
+      <ProductCards headingLevel={2} />
+      <div className="onboarding card">
         <div>
-          <h3>Your first shortlist starts here.</h3>
+          <h2>New to LeadAtlas?</h2>
           <p className="small">
-            Choose a finder, enter a location and niche, and review the results.
-            New here? Take a quick sample tour to see how research becomes a
-            qualified contact.
+            See how a search becomes a shortlist in the synthetic sample tour.
           </p>
         </div>
         <Link className="button secondary" href="/tour">
-          Take the sample tour →
+          Take the sample tour
         </Link>
       </div>
       {data && (
         <div className="card">
-          <h3>Available regional coverage</h3>
+          <h2>Available regional coverage</h2>
           {data.coverage.length ? (
             <div className="coverage">
               {data.coverage.map((c) => (
                 <span key={`${c.country}:${c.region}:${c.city}`}>
-                  {c.city}, {c.region}, {c.country} · {c.count} records
+                  {c.city}, {c.region}, {c.country}: {c.count} records
                 </span>
               ))}
             </div>
@@ -111,8 +100,7 @@ export function JobList() {
   );
   return (
     <div className="stack">
-      <div>
-        <div className="eyebrow">Durable research</div>
+      <div className="page-intro">
         <h1>Search history</h1>
         <p>
           Track saved searches, provider failures and qualification progress.
@@ -124,7 +112,7 @@ export function JobList() {
       ) : (
         <div className="card table-card">
           <div className="table-wrap">
-            <table>
+            <table className="history-table" role="table">
               <thead>
                 <tr>
                   <th>Search</th>
@@ -138,25 +126,31 @@ export function JobList() {
                 {data?.jobs.map((j) => (
                   <tr key={j.id}>
                     <td>
-                      <Link className="link" href={`/searches/${j.id}`}>
-                        {productName(j.input.product)} · {j.input.niche}
-                        <br />
-                        {j.input.city}, {j.input.region}
+                      <Link
+                        className="link job-link"
+                        href={`/searches/${j.id}`}
+                      >
+                        {productName(j.input.product)}
                       </Link>
+                      <div className="small muted">
+                        {j.input.niche}, {j.input.city}, {j.input.region}
+                      </div>
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <Badge value={j.status} />
                     </td>
-                    <td>
+                    <td data-label="Processed">
                       {j.processed}/{j.discovered}
                     </td>
-                    <td>{j.qualified}</td>
-                    <td>{new Date(j.createdAt).toLocaleString()}</td>
+                    <td data-label="Qualified at run">{j.qualified}</td>
+                    <td data-label="Created">
+                      {new Date(j.createdAt).toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {!data?.jobs.length && (
+            {data && !data.jobs.length && (
               <div className="empty">
                 <h3>No searches yet</h3>
                 <p>Start a finder to create your first research job.</p>
@@ -250,15 +244,15 @@ export function JobDetail({ id }: { id: string }) {
     <div className="stack">
       <div className="row between">
         <div>
-          <div className="eyebrow">Search results</div>
           <h1>
             {data
-              ? `${data.job.input.niche} · ${data.job.input.city}`
+              ? `${data.job.input.niche}, ${data.job.input.city}`
               : "Research job"}
           </h1>
           <p>
-            {data && productName(data.job.input.product)} ·{" "}
-            {data?.job.input.region} · {data?.job.input.country}
+            {data && productName(data.job.input.product)}
+            <br />
+            {data?.job.input.region}, {data?.job.input.country}
           </p>
         </div>
         <div className="row">
@@ -325,11 +319,11 @@ export function JobDetail({ id }: { id: string }) {
               </div>
               <div className="row small">
                 <span>{data.job.discovered} discovered</span>
-                <span>· {data.job.qualified} qualified at run</span>
-                <span>· {data.job.duplicates} duplicate source results</span>
+                <span>{data.job.qualified} qualified at run</span>
+                <span>{data.job.duplicates} duplicate source results</span>
                 {data.breakdown.map((b) => (
                   <span key={b.state ?? "pending"}>
-                    · {b.count}{" "}
+                    {b.count}{" "}
                     {(b.state ?? "pending").toLowerCase().replaceAll("_", " ")}
                   </span>
                 ))}
@@ -342,6 +336,7 @@ export function JobDetail({ id }: { id: string }) {
                 <label className="row">
                   View
                   <select
+                    aria-label="View"
                     value={quality}
                     onChange={(e) => {
                       setQuality(e.target.value);
@@ -400,8 +395,7 @@ export function SavedLeads() {
   );
   return (
     <div className="stack">
-      <div>
-        <div className="eyebrow">Your shortlist</div>
+      <div className="page-intro">
         <h1>Lead Management & Export</h1>
         <p>
           Inspect sources, edit research tags, record evidence and suppress
@@ -411,7 +405,7 @@ export function SavedLeads() {
       <ErrorNotice message={resource.error} />
       <div className="card table-card">
         <form
-          className="table-toolbar"
+          className="table-toolbar saved-lead-filters"
           onSubmit={(e) => {
             e.preventDefault();
             setFilter(q);
@@ -442,7 +436,7 @@ export function SavedLeads() {
         </form>
         {resource.loading ? (
           <Loading />
-        ) : (
+        ) : resource.error ? null : (
           <LeadsTable
             records={resource.data?.records ?? []}
             refresh={resource.refresh}
@@ -469,8 +463,7 @@ export function ExportHistory() {
   }>("/api/exports");
   return (
     <div className="stack">
-      <div>
-        <div className="eyebrow">Auditable downloads</div>
+      <div className="page-intro">
         <h1>Exports</h1>
         <p>
           Default CSV contains exactly Business Name and Email. Every export
@@ -480,7 +473,7 @@ export function ExportHistory() {
       <ErrorNotice message={error} />
       <div className="card table-card">
         <div className="table-wrap">
-          <table>
+          <table className="export-table" role="table">
             <thead>
               <tr>
                 <th>Generated</th>
@@ -492,9 +485,11 @@ export function ExportHistory() {
             <tbody>
               {data?.exports.map((e) => (
                 <tr key={e.id}>
-                  <td>{new Date(e.createdAt).toLocaleString()}</td>
-                  <td>{e.count}</td>
-                  <td>{e.skipped}</td>
+                  <td data-label="Generated">
+                    {new Date(e.createdAt).toLocaleString()}
+                  </td>
+                  <td data-label="Exported">{e.count}</td>
+                  <td data-label="Skipped">{e.skipped}</td>
                   <td>
                     <Link className="link" href={`/searches/${e.jobId}`}>
                       View search
@@ -504,7 +499,7 @@ export function ExportHistory() {
               ))}
             </tbody>
           </table>
-          {!data?.exports.length && (
+          {data && !data.exports.length && (
             <div className="empty">
               <h3>No exports yet</h3>
               <p>Download qualified contacts from a completed research job.</p>

@@ -1,0 +1,6 @@
+render tier: 50 screenshots in /home/sopski/LeadAtlas/.hallmark/shots (1280x800, 1440x900, 1920x1080 folds; 1440 and 375 full pages)
+.hallmark/before.json
+  WARN kept :1 the pages hold 1381 words where they held 2494 | fix: Check that no section of content was dropped
+sloplint: 0 FAIL, 1 WARN across 5 file(s) and 10 URL(s).
+kept: links 24/25 (1 dropped on record), fields 17/20 (3 dropped on record), handlers 2/2, headings 12/32 (20 dropped on record), figures 1/1; before 181 FAIL, 223 REFLEX, now 0 FAIL, 0 REFLEX
+compare: .hallmark/compare.html shows before and after side by side

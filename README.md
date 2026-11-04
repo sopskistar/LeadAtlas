@@ -87,3 +87,7 @@ Tests use fixtures and an isolated PGlite PostgreSQL engine with real migrations
 - [Future modules and remaining work](docs/ROADMAP.md)
 
 The supplied v2 wordmark/icon are copied unchanged to `public/brand/`, while the original root assets remain preserved.
+
+## Frontend redesign review
+
+The Hallmark custom-brand frontend redesign continues the existing application. See the [recovered handover](docs/HANDOVER_2026_11_04.md), [shared design system](design.md), [redesign and validation report](docs/HALLMARK_REDESIGN.md), [before/after comparison](docs/screenshots/hallmark/compare.html), and [isolated authenticated browser-review setup](tests/visual/README.md). Backend integration and production configuration remain a separate phase.

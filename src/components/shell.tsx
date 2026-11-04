@@ -26,7 +26,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   ];
   const navigation = (
     <>
-      <div className="sidebar-section">YOUR WORKSPACE</div>
+      <div className="sidebar-section">Find & manage</div>
       <nav aria-label="Workspace">
         {nav.map((p) => (
           <Link
@@ -41,7 +41,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </Link>
         ))}
       </nav>
-      <div className="sidebar-section">ACCOUNT</div>
+      <div className="sidebar-section">Account</div>
       <nav aria-label="Settings">
         <Link
           className={`nav-item ${path === "/settings/account" ? "active" : ""}`}
@@ -56,7 +56,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             href="/admin/sources"
           >
             <Cable size={18} />
-            <span>Admin · Data sources & operations</span>
+            <span>Data sources & operations</span>
           </Link>
         )}
       </nav>
@@ -68,11 +68,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Brand />
         {navigation}
         <div className="sidebar-footer">
-          <p>
-            Quality leads.
-            <br />
-            Clearer opportunities.
-          </p>
           <Link className="row" href="/terms">
             Responsible research <ExternalLink size={12} />
           </Link>
@@ -86,7 +81,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
               Workspace <span aria-hidden="true"> / </span>
               <span>
                 {nav.find((p) => p.path === path)?.short ??
-                  "Account & settings"}
+                  (path === "/admin/sources"
+                    ? "Data sources & operations"
+                    : path.startsWith("/searches/")
+                      ? "Search results"
+                      : "Account & privacy")}
               </span>
             </div>
             <div className="workspace-mobile-brand">
@@ -99,7 +98,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               href={data?.user ? "/settings/account" : "/sign-in"}
               className="button secondary account-link"
             >
-              {data?.user?.name ?? "Sign in"}
+              <span className="account-name">
+                {data?.user?.name ?? "Sign in"}
+              </span>
+              <span className="account-mobile-label" aria-hidden="true">
+                {data?.user ? "Account" : "Sign in"}
+              </span>
             </Link>
           </div>
         </header>

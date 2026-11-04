@@ -44,7 +44,7 @@ export function PasswordField({
       {fresh && name === "password" && (
         <div id={`${id}-help`} className="password-help">
           <span className="small muted">
-            Use 12–128 characters. A long, unique passphrase or a password
+            Use 12 to 128 characters. A long, unique passphrase or a password
             manager works well.
           </span>
           <div className="strength-track" aria-hidden="true">

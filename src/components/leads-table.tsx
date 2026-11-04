@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { SearchX, X, Copy, Bookmark, SearchCheck } from "lucide-react";
 import { api, Badge, Button, ErrorNotice } from "./ui";
@@ -15,6 +15,7 @@ export function LeadsTable({
   refresh?: () => void;
 }) {
   const [selected, setSelected] = useState<ManagedRecord | null>(null);
+  const inspectTrigger = useRef<HTMLButtonElement | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   async function action(
@@ -48,8 +49,8 @@ export function LeadsTable({
   }
   return (
     <>
-      <ErrorNotice message={error} />
-      {message && (
+      {!selected && <ErrorNotice message={error} />}
+      {!selected && message && (
         <div className="notice success" role="status">
           {message}
         </div>
@@ -61,7 +62,7 @@ export function LeadsTable({
         aria-label="Business contacts table"
       >
         {records.length ? (
-          <table>
+          <table className="contacts-table" role="table">
             <thead>
               <tr>
                 <th>Business name</th>
@@ -79,7 +80,7 @@ export function LeadsTable({
                   <td>
                     <strong>{r.name}</strong>
                     <div className="muted small">
-                      {r.city}, {r.region} · {r.niche}
+                      {r.city}, {r.region} / {r.niche}
                     </div>
                     {r.fixture && <Badge value="DEMO FIXTURE" />}
                   </td>
@@ -112,7 +113,15 @@ export function LeadsTable({
                     />
                   </td>
                   <td>
-                    <Button variant="text" onClick={() => setSelected(r)}>
+                    <Button
+                      variant="text"
+                      onClick={(event) => {
+                        inspectTrigger.current = event.currentTarget;
+                        setMessage("");
+                        setError("");
+                        setSelected(r);
+                      }}
+                    >
                       <SearchCheck size={14} />
                       Inspect
                     </Button>
@@ -175,11 +184,15 @@ export function LeadsTable({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="drawer">
+          <Dialog.Content
+            className="drawer"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              inspectTrigger.current?.focus({ preventScroll: true });
+            }}
+          >
             <div className="row between">
-              <div className="eyebrow" style={{ margin: 0 }}>
-                Evidence inspection
-              </div>
+              <span className="small muted">Evidence inspection</span>
               <Dialog.Close asChild>
                 <Button variant="text" aria-label="Close evidence">
                   <X size={22} />
@@ -193,6 +206,12 @@ export function LeadsTable({
               Evidence-backed research. Unknown checks remain visible and are
               excluded from qualified exports.
             </Dialog.Description>
+            <ErrorNotice message={error} />
+            {message && (
+              <div className="notice success" role="status">
+                {message}
+              </div>
+            )}
             {selected && (
               <>
                 <Badge
@@ -249,7 +268,7 @@ export function LeadsTable({
                         <p className="small" style={{ margin: "8px 0" }}>
                           Found {c.foundAt}
                           <br />
-                          {c.verification?.provider ?? "No verifier"} ·{" "}
+                          {c.verification?.provider ?? "No verifier"}:{" "}
                           {c.verification?.nativeStatus ?? "not_verified"}
                           <br />
                           Verified {c.verification?.checkedAt ?? "Never"}
@@ -281,7 +300,7 @@ export function LeadsTable({
                     {Object.entries(selected.fieldRights).map(
                       ([field, right]) => (
                         <div className="evidence" key={field}>
-                          <strong>{field}</strong> ·{" "}
+                          <strong>{field}</strong>:{" "}
                           {right.export
                             ? "Export permitted"
                             : "Export restricted"}
@@ -305,7 +324,7 @@ export function LeadsTable({
                         <p className="small" style={{ margin: "7px 0" }}>
                           {e.detail}
                           <br />
-                          {e.observedAt} · {e.source}
+                          {e.observedAt}, {e.source}
                         </p>
                         <a href={e.url} target="_blank" rel="noreferrer">
                           {e.url}

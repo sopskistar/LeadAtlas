@@ -44,7 +44,7 @@ test("homepage explains all five features and uses real brand assets", async ({
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Better Leads.Better Opportunities.",
+    "Find businesses worth contacting.",
   );
   const logo = page
     .getByRole("img", { name: "LeadAtlas", exact: true })
@@ -349,7 +349,7 @@ test("zero-setup tour is clearly synthetic and has no export action", async ({
 }) => {
   await page.goto("/tour");
   await expect(
-    page.getByText("SYNTHETIC SAMPLE · NO LIVE LEADS", { exact: true }),
+    page.getByText("Synthetic sample, no live leads", { exact: true }),
   ).toBeVisible();
   for (let i = 0; i < 3; i++)
     await page.getByRole("button", { name: "Next step", exact: true }).click();
@@ -413,7 +413,7 @@ test("responsive pages render without overflow, browser errors or hydration warn
           .first()
           .selectOption(theme);
         await page.screenshot({
-          path: `test-results/after-${info.project.name}-${path.replaceAll("/", "") || "home"}-${width}-${theme}.png`,
+          path: `.hallmark/validation/after-${info.project.name}-${path.replaceAll("/", "") || "home"}-${width}-${theme}.png`,
           fullPage: true,
         });
       }
