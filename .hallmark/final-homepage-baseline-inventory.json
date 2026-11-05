@@ -1,0 +1,99 @@
+{
+ "v": 1,
+ "at": "2026-11-05T23:09:44.908Z",
+ "scope": "app",
+ "summary": {
+  "fails": 0,
+  "reflex": 0,
+  "warns": 0
+ },
+ "files": {
+  "src/app/page.tsx": {
+   "handlers": [],
+   "links": [
+    "#how-it-works",
+    "/business-contacts",
+    "/dashboard",
+    "/domain-buyer-finder",
+    "/privacy",
+    "/sign-up",
+    "/terms",
+    "/tour",
+    "/website-opportunities",
+    "{product.path}"
+   ],
+   "fields": [],
+   "hooks": [],
+   "ids": [
+    "features",
+    "how-it-works",
+    "main-content",
+    "who-its-for"
+   ],
+   "scripts": []
+  },
+  "src/components/navigation.tsx": {
+   "handlers": [
+    "onClick={(e) => { if ((e.target as HTMLElement).closest(\"a\")) setOpen(false); }}",
+    "onOpenChange={setOpen}"
+   ],
+   "links": [
+    "/",
+    "/#features",
+    "/#how-it-works",
+    "/#who-its-for",
+    "/sign-in",
+    "/sign-up",
+    "{p.path}"
+   ],
+   "fields": [],
+   "hooks": [],
+   "ids": [],
+   "scripts": []
+  },
+  "src/components/catalog.tsx": {
+   "handlers": [],
+   "links": [
+    "{p.path}"
+   ],
+   "fields": [],
+   "hooks": [],
+   "ids": [],
+   "scripts": []
+  }
+ },
+ "wiring": {
+  "handlers": [
+   "onClick={(e) => { if ((e.target as HTMLElement).closest(\"a\")) setOpen(false); }}",
+   "onOpenChange={setOpen}"
+  ],
+  "links": [
+   "#how-it-works",
+   "/",
+   "/#features",
+   "/#how-it-works",
+   "/#who-its-for",
+   "/business-contacts",
+   "/dashboard",
+   "/domain-buyer-finder",
+   "/privacy",
+   "/sign-in",
+   "/sign-up",
+   "/terms",
+   "/tour",
+   "/website-opportunities",
+   "{p.path}",
+   "{product.path}"
+  ],
+  "fields": [],
+  "hooks": [],
+  "ids": [
+   "features",
+   "how-it-works",
+   "main-content",
+   "who-its-for"
+  ]
+ },
+ "scripts": {},
+ "pages": {}
+}

@@ -1,3 +1,7 @@
+import {
+  CustomerTestimonials,
+  UpdatesSignup,
+} from "@/components/homepage-engagement";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -7,7 +11,7 @@ import {
   MailCheck,
   ShieldCheck,
 } from "lucide-react";
-import { products } from "@/components/catalog";
+import { ProductCards, products } from "@/components/catalog";
 import { Brand, PublicHeader } from "@/components/navigation";
 
 export default function Home() {
@@ -42,7 +46,7 @@ export default function Home() {
           className="discovery-grid section-anchor"
           aria-label="Business discovery"
         >
-          {products.map((product, index) => (
+          {products.map((product) => (
             <Link
               className="discovery-link"
               href={product.path}
@@ -50,20 +54,21 @@ export default function Home() {
             >
               <div>
                 <h2>{product.title}</h2>
-                <p>
-                  {
-                    [
-                      "Find active businesses with functioning websites and reliable public contact information.",
-                      "Discover active businesses without an identified website and find their public business contacts.",
-                      "Find businesses using related names or domain variations that may be upgrade prospects for your domain.",
-                      "Discover newly registered businesses and research their public presence and contacts.",
-                    ][index]
-                  }
-                </p>
+                <p>{product.discoveryDescription}</p>
               </div>
               <ArrowUpRight size={20} aria-hidden="true" />
             </Link>
           ))}
+        </section>
+        <section
+          id="feature-directory"
+          className="product-section section-anchor"
+          aria-labelledby="prospect-heading"
+        >
+          <div className="section-intro">
+            <h2 id="prospect-heading">Find your next prospect.</h2>
+          </div>
+          <ProductCards />
         </section>
         <section className="quality-section">
           <div>
@@ -192,6 +197,8 @@ export default function Home() {
             ))}
           </div>
         </section>
+        <CustomerTestimonials />
+        <UpdatesSignup />
       </main>
       <footer className="footer">
         <Brand />

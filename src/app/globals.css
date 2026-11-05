@@ -378,11 +378,7 @@ input::file-selector-button {
   height: 60px;
   object-fit: contain;
 }
-:root[data-theme="dark"] .brand {
-  background: var(--color-logo-paper);
-  border-radius: var(--radius-control);
-  padding-inline: var(--space-xs);
-}
+
 .landing {
   background: var(--surface);
 }
@@ -405,8 +401,8 @@ input::file-selector-button {
 .public-links {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  font-size: var(--text-sm);
+  gap: var(--space-8);
+  font-size: var(--text-md);
 }
 .public-links a,
 .sign-in-link {
@@ -1749,15 +1745,11 @@ article ul {
 
 /* Product corrections · approved icon-only identity and purpose-led discovery. */
 .brand .logo {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   object-fit: contain;
 }
-:root[data-theme="dark"] .brand {
-  background: var(--color-logo-paper);
-  border-radius: var(--radius-control);
-  padding: var(--space-2xs);
-}
+
 .footer .brand .logo {
   width: 40px;
   height: 40px;
@@ -1913,7 +1905,117 @@ article ul {
     font-size: 20px;
   }
   .brand .logo {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* Phase A · one approved transparent mark across shared navigation. */
+.brand {
+  gap: var(--space-sm);
+}
+.brand-tagline {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.public-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 1100px) {
+  .landing-nav .brand-tagline {
+    display: none;
+  }
+}
+@media (max-width: 639px) {
+  .brand-tagline {
+    display: none;
+  }
+}
+
+/* Phase A · restrained consent and review surfaces in the existing system. */
+.updates-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2xl);
+  padding-block: var(--space-2xl);
+  border-top: 1px solid var(--line);
+}
+.updates-section h2 {
+  font-size: var(--text-section);
+  max-width: 14ch;
+}
+.updates-section > div > p {
+  margin-top: var(--space-md);
+  color: var(--muted);
+}
+.updates-section .check {
+  align-items: flex-start;
+  font-size: var(--text-sm);
+}
+.subscription-trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.updates-action {
+  max-width: 640px;
+  padding-block: var(--space-2xl);
+}
+.testimonial-section {
+  padding-block: var(--space-2xl);
+  border-top: 1px solid var(--line);
+}
+.testimonial-list {
+  margin-top: var(--space-xl);
+  display: grid;
+  gap: var(--space-xl);
+}
+.testimonial-list figure {
+  margin: 0;
+  max-width: 65ch;
+}
+.testimonial-list blockquote {
+  margin: 0 0 var(--space-lg);
+  font-size: var(--text-lg);
+}
+.testimonial-list figcaption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+}
+.testimonial-list figcaption > span {
+  display: grid;
+}
+.testimonial-list figcaption time {
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
+.testimonial-list img {
+  border-radius: var(--radius-pill);
+}
+.review-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  border-top: 1px solid var(--line);
+  padding-block: var(--space-lg);
+}
+@media (max-width: 767px) {
+  .updates-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+    padding-block: var(--space-xl);
+  }
+  .review-record {
+    flex-wrap: wrap;
   }
 }

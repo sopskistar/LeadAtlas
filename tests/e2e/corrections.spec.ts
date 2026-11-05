@@ -163,8 +163,7 @@ test("approved icon is recognizable at app sizes and navigation has an accessibl
         image.width = size;
         image.height = size;
         image.alt = `Approved logo ${size}px`;
-        image.style.cssText =
-          "background:var(--color-logo-paper);border-radius:4px";
+        image.style.cssText = "object-fit:contain";
         row.append(image);
       }
       main.append(row);

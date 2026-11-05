@@ -7,6 +7,7 @@ import {
   SavedLeads,
   ExportHistory,
 } from "@/components/workspace";
+import { TestimonialsAdmin } from "@/components/testimonials-admin";
 import { Sources } from "@/components/sources";
 import { Account } from "@/components/account";
 import { pageIdentity, isAdmin } from "@/lib/server/access";
@@ -19,6 +20,7 @@ const titles: Record<string, string> = {
   leads: "Lead Management & Export",
   jobs: "Search history",
   "admin/sources": "Data sources & operations",
+  "admin/testimonials": "Customer testimonials",
   "settings/account": "Account & privacy",
   exports: "Exports",
 };
@@ -43,6 +45,7 @@ export default async function Page({
     if (!identity) redirect("/sign-in");
     if (!isAdmin(identity.user.id)) notFound();
     if (path === "admin/sources") return <Sources />;
+    if (path === "admin/testimonials") return <TestimonialsAdmin />;
     notFound();
   }
   if (

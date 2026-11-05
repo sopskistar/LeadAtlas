@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   History,
   Cable,
+  MessageSquare,
   Settings,
   Download,
   ExternalLink,
@@ -59,13 +60,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <span>Data sources & operations</span>
           </Link>
         )}
+        {data?.isAdmin && (
+          <Link
+            className={`nav-item ${path === "/admin/testimonials" ? "active" : ""}`}
+            href="/admin/testimonials"
+          >
+            <MessageSquare size={18} />
+            <span>Customer testimonials</span>
+          </Link>
+        )}
       </nav>
     </>
   );
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Brand />
+        <Brand tagline />
         {navigation}
         <div className="sidebar-footer">
           <Link className="row" href="/terms">
@@ -81,11 +91,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
               Workspace <span aria-hidden="true"> / </span>
               <span>
                 {nav.find((p) => p.path === path)?.short ??
-                  (path === "/admin/sources"
-                    ? "Data sources & operations"
-                    : path.startsWith("/searches/")
-                      ? "Search results"
-                      : "Account & privacy")}
+                  (path === "/admin/testimonials"
+                    ? "Customer testimonials"
+                    : path === "/admin/sources"
+                      ? "Data sources & operations"
+                      : path.startsWith("/searches/")
+                        ? "Search results"
+                        : "Account & privacy")}
               </span>
             </div>
             <div className="workspace-mobile-brand">

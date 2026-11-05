@@ -52,7 +52,7 @@ test("homepage presents four independent discovery features and the approved ico
   const logo = homeLink.locator("img");
   await expect(logo).toBeVisible();
   expect(await logo.getAttribute("src")).toContain("leadatlas-icon-v2");
-  expect(await homeLink.textContent()).toBe("");
+  await expect(homeLink).toContainText("Better leads.Less guesswork.");
   expect(
     await logo.evaluate((image: HTMLImageElement) => image.naturalWidth),
   ).toBeGreaterThan(0);

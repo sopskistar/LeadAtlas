@@ -6,6 +6,8 @@ LeadAtlas helps users discover businesses, identify promising leads, and uncover
 
 This repository contains actual application/backend/worker code. It ships with **no production leads, provider keys, fake results or automatic verified claims**. Nine real, unverified Overture research candidates with source manifests/licences are preserved under `samples/` and are never seeded automatically. Missing configuration is shown in the UI. Google/Meta adapters are restricted; they never feed the export database.
 
+Latest review: [targeted homepage corrections, screenshots and validation](docs/FINAL_FRONTEND_CORRECTIONS.md). Homepage updates signup requires migration **0004**, a verified sender and separate server-only consent secret; testimonials stay hidden until genuine permissioned reviews are approved. The [next lead-discovery architecture](docs/LEAD_DISCOVERY_NEXT_PHASE.md) is researched but not activated.
+
 ## Local setup (Node.js 22+, npm)
 
 Windows 11 PowerShell:

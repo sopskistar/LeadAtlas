@@ -41,6 +41,18 @@ export default function Privacy() {
             before public launch.
           </p>
           <p>
+            Product updates require explicit consent and email confirmation. We
+            store your subscription address, consent version,
+            request/confirmation dates and unsubscribe state separately from
+            prospect records. Confirmation mail is sent through Resend when
+            configured. Every updates message must include an unsubscribe link.
+            Unsubscribing stops future updates; a minimal suppression and
+            consent record is retained to respect that choice.
+            Administrator-managed testimonials are public only after the
+            reviewer grants permission and an administrator approves
+            publication.
+          </p>
+          <p>
             Before public launch, the operator must publish its legal identity,
             contact method, retention schedule and regional privacy disclosures.
             This page describes the implemented data handling and is not a

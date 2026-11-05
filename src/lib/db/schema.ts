@@ -288,3 +288,50 @@ export const rateLimit = pgTable("rate_limits", {
   count: integer().notNull(),
   lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 });
+
+// Homepage engagement is separate from customer prospect records and suppression.
+export const updateSubscriptions = pgTable("update_subscriptions", {
+  id: text().primaryKey(),
+  email: text().notNull().unique(),
+  status: text()
+    .$type<"PENDING" | "ACTIVE" | "UNSUBSCRIBED">()
+    .notNull()
+    .default("PENDING"),
+  consentVersion: text("consent_version").notNull(),
+  requestedAt: time("requested_at").notNull().defaultNow(),
+  confirmedAt: time("confirmed_at"),
+  unsubscribedAt: time("unsubscribed_at"),
+  confirmTokenHash: text("confirm_token_hash").unique(),
+  confirmExpiresAt: time("confirm_expires_at"),
+  confirmationSentAt: time("confirmation_sent_at"),
+});
+export const updateSubscriptionEvents = pgTable("update_subscription_events", {
+  id: text().primaryKey(),
+  subscriptionId: text("subscription_id")
+    .notNull()
+    .references(() => updateSubscriptions.id, { onDelete: "cascade" }),
+  action: text().$type<"REQUESTED" | "CONFIRMED" | "UNSUBSCRIBED">().notNull(),
+  consentVersion: text("consent_version").notNull(),
+  createdAt: time("created_at").notNull().defaultNow(),
+});
+export const testimonials = pgTable("testimonials", {
+  id: text().primaryKey(),
+  displayName: text("display_name").notNull(),
+  roleOrBusiness: text("role_or_business").notNull(),
+  text: text().notNull(),
+  photoPath: text("photo_path"),
+  photoPermission: boolean("photo_permission").notNull().default(false),
+  permissionStatus: text("permission_status")
+    .$type<"PENDING" | "GRANTED" | "REVOKED">()
+    .notNull()
+    .default("PENDING"),
+  permissionEvidence: text("permission_evidence").notNull(),
+  approvalStatus: text("approval_status")
+    .$type<"DRAFT" | "APPROVED">()
+    .notNull()
+    .default("DRAFT"),
+  publishedAt: time("published_at"),
+  approvedAt: time("approved_at"),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: time("updated_at").notNull().defaultNow(),
+});

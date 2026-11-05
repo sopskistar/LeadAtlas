@@ -386,3 +386,43 @@ test("worldwide domain results expose relationship, evidence and verification wi
     table.getByRole("button", { name: "Inspect", exact: true }),
   ).toBeFocused();
 });
+
+test("private testimonial workflow saves a draft and never publishes it without permission", async ({
+  page,
+}) => {
+  await page.goto("/admin/testimonials");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Customer testimonials",
+  );
+  await page
+    .getByLabel("Customer display name", { exact: true })
+    .fill("TEST REVIEWER - NOT REAL");
+  await page
+    .getByLabel("Role or business", { exact: true })
+    .fill("TEST FIXTURE COMPANY");
+  await page
+    .getByLabel("Approved testimonial text", { exact: true })
+    .fill(
+      "TEST FIXTURE ONLY. This is not a genuine review and must remain unpublished.",
+    );
+  await page.getByRole("button", { name: "Save review", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Review saved");
+  await expect(
+    page
+      .getByRole("button", {
+        name: "Edit TEST REVIEWER - NOT REAL",
+        exact: true,
+      })
+      .first(),
+  ).toBeVisible();
+  const response = await page.request.get("/api/testimonials");
+  expect(response.status()).toBe(200);
+  expect((await response.json()).reviews).toEqual([]);
+  await page.goto("/");
+  await expect(page.locator(".testimonial-section")).toHaveCount(0);
+  await page.goto("/admin/testimonials");
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(result.violations.map((v) => v.id)).toEqual([]);
+});

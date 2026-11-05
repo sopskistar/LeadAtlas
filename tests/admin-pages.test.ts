@@ -7,6 +7,7 @@ vi.mock("../src/lib/server/access", () => ({
   isAdmin: (id: string) => id === "fixture-admin",
 }));
 import Page from "../src/app/(workspace)/[...slug]/page";
+import { TestimonialsAdmin } from "../src/components/testimonials-admin";
 import { Sources } from "../src/components/sources";
 beforeEach(() => {
   identity.value = null;
@@ -18,6 +19,25 @@ describe("server-rendered private page authorization", () => {
       params: Promise.resolve({ slug: ["admin", "sources"] }),
     });
     expect(page.type).toBe(Sources);
+  });
+  it("protects testimonial moderation behind the same server-side administrator boundary", async () => {
+    await expect(
+      Page({ params: Promise.resolve({ slug: ["admin", "testimonials"] }) }),
+    ).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    identity.value = { user: { id: "fixture-customer" } };
+    await expect(
+      Page({ params: Promise.resolve({ slug: ["admin", "testimonials"] }) }),
+    ).rejects.toMatchObject({ digest: "NEXT_HTTP_ERROR_FALLBACK;404" });
+    identity.value = { user: { id: "fixture-admin" } };
+    expect(
+      (
+        await Page({
+          params: Promise.resolve({ slug: ["admin", "testimonials"] }),
+        })
+      ).type,
+    ).toBe(TestimonialsAdmin);
   });
   it("redirects anonymous direct navigation to sign in", async () => {
     for (const slug of [

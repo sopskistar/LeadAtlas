@@ -1,6 +1,20 @@
 [
   {
     "mode": "redesign",
+    "depth": "polish plus explicitly requested directory/engagement additions",
+    "scope": "app",
+    "genre": "modern-minimal",
+    "theme": "custom",
+    "brand": "original transparent leadatlas-icon-v2.png; established blue/navy/white and Albert Sans",
+    "entry": "src/app/page.tsx",
+    "preserved": "existing four cards, remaining homepage content, prospect/auth/worker/export behavior",
+    "review": "in-thread under installed Codex harness; awaiting user frontend approval",
+    "sweep": "0 FAIL, 0 REFLEX, 0 WARN; 16/16 links and 2/2 handlers preserved in reconstructed source inventory",
+    "evidence": "docs/FINAL_FRONTEND_CORRECTIONS.md and .hallmark/final-homepage-validation.json",
+    "date": "2026-11-05"
+  },
+  {
+    "mode": "redesign",
     "depth": "polish plus user-specified product composition changes",
     "scope": "app",
     "genre": "modern-minimal",

@@ -1,3 +1,9 @@
+import { handleUpdates } from "./updates";
+import {
+  publishedTestimonials,
+  privateTestimonials,
+  saveTestimonial,
+} from "./testimonials";
 import { validRegion } from "../core/locations";
 import { citySuggestions, nicheSuggestions } from "../reference/lookups";
 import { globalDiscoveryConfigured } from "../discovery/providers";
@@ -143,6 +149,9 @@ export async function handleApi(req: Request, segments: string[]) {
   try {
     const url = new URL(req.url);
     const path = segments.join("/");
+    if (segments[0] === "updates") return handleUpdates(req, segments);
+    if (req.method === "GET" && path === "testimonials")
+      return json({ reviews: await publishedTestimonials() });
     if (req.method === "GET" && (path === "cities" || path === "niches")) {
       if (path === "niches")
         return json({
@@ -205,6 +214,16 @@ export async function handleApi(req: Request, segments: string[]) {
       Math.min(10000, Number(url.searchParams.get("page") ?? 1) || 1),
     );
     const pageSize = 25;
+    if (path === "admin/testimonials") {
+      admin(ownerId);
+      if (req.method === "GET")
+        return json({ reviews: await privateTestimonials() });
+      if (req.method === "POST")
+        return json(
+          { review: await saveTestimonial(await body(req), ownerId) },
+          201,
+        );
+    }
     if (req.method === "GET" && path === "sources") {
       admin(ownerId);
       const configs = await db

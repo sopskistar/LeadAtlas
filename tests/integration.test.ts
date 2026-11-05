@@ -670,6 +670,14 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect(
       (await request("admin/status", "GET", undefined, other.cookie)).status,
     ).toBe(403);
+    expect(
+      (await request("admin/testimonials", "GET", undefined, other.cookie))
+        .status,
+    ).toBe(403);
+    expect(
+      (await request("admin/testimonials", "POST", {}, other.cookie)).status,
+    ).toBe(403);
+    expect((await request("admin/testimonials")).status).toBe(200);
     expect((await request("admin/status")).status).toBe(200);
     const malicious = new Request(base + "/api/jobs", {
       method: "POST",

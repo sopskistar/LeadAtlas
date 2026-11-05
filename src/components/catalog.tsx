@@ -11,6 +11,8 @@ export const products = [
   {
     path: "/business-contacts",
     id: "contacts",
+    discoveryDescription:
+      "Find active businesses with functioning websites and reliable public contact information.",
     title: "Businesses With Websites",
     short: "Businesses With Websites",
     icon: Globe2,
@@ -21,6 +23,8 @@ export const products = [
   {
     path: "/website-opportunities",
     id: "opportunities",
+    discoveryDescription:
+      "Discover active businesses without an identified website and find their public business contacts.",
     title: "Businesses Without Websites",
     short: "Businesses Without Websites",
     icon: Store,
@@ -31,6 +35,8 @@ export const products = [
   {
     path: "/domain-buyer-finder",
     id: "domains",
+    discoveryDescription:
+      "Find businesses using related names or domain variations that may be upgrade prospects for your domain.",
     title: "Domain Buyer Finder",
     short: "Domain Buyer Finder",
     icon: ScanSearch,
@@ -41,6 +47,8 @@ export const products = [
   {
     path: "/new-businesses",
     id: "new",
+    discoveryDescription:
+      "Discover newly registered businesses and research their public presence and contacts.",
     title: "New Business Finder",
     short: "New Business Finder",
     icon: Building2,
