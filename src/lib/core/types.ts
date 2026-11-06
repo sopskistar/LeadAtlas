@@ -103,6 +103,7 @@ export type BusinessRecord = {
     rank: number;
     ambiguous: boolean;
   };
+  discoveredBy?: string[];
 };
 export type SearchInput = {
   product: Product;
@@ -142,6 +143,18 @@ export type SourceInfo = {
   limitations: string;
   rawRetention: string;
   batchLimit: number;
+  capabilities: {
+    businessDiscovery: boolean;
+    websiteDiscovery: boolean;
+    socialOnlyDiscovery: boolean;
+    publishedBusinessEmail: boolean;
+    locationSearch: boolean;
+    businessTypeSearch: boolean;
+  };
+  supportedLocations: string[];
+  requiredCredentials: string[];
+  rateLimitPolicy: string;
+  pricingConstraint: string;
 };
 export interface LeadSourceAdapter extends SourceInfo {
   search(

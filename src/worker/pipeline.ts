@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, or, lt, isNull, sql, count } from "drizzle-orm";
+import { and, eq, or, lt, isNull, sql, count, inArray } from "drizzle-orm";
 import { getDb } from "../lib/db";
 import {
   businesses,
   jobs,
   jobItems,
   jobEvents,
+  sourceRuns,
   sourceConfigs,
   suppressions,
   evidenceLog,
@@ -54,17 +55,87 @@ export async function discover(jobId: string, discoveryToken?: string) {
         )
       : null;
   if (globalMatches) ids.push(...globalMatches.map((r) => r.id));
+  const attribution = new Map<string, Set<string>>();
   for (const source of globalMatches ? [] : job.input.sources) {
-    const batch = await importedAdapter(
-      source as "overture" | "imports" | "canada",
-    ).search(job.input, { ownerId: job.ownerId, jobId });
-    ids.push(...batch.ids);
-    await db.insert(jobEvents).values({
-      id: randomUUID(),
-      jobId,
-      stage: `SOURCE:${source}`,
-      detail: `${batch.ids.length} matching permitted source records`,
-    });
+    const startedAt = new Date();
+    try {
+      const batch = await importedAdapter(
+        source as "overture" | "imports" | "canada",
+      ).search(job.input, { ownerId: job.ownerId, jobId });
+      ids.push(...batch.ids);
+      for (const id of batch.ids) {
+        const sources = attribution.get(id) ?? new Set<string>();
+        sources.add(source);
+        attribution.set(id, sources);
+      }
+      await db
+        .insert(sourceRuns)
+        .values({
+          jobId,
+          source,
+          adapterVersion: "1",
+          status: "COMPLETED",
+          requestCount: 1,
+          discoveredCount: batch.ids.length,
+          uniqueCount: new Set(batch.ids).size,
+          startedAt,
+          completedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [sourceRuns.jobId, sourceRuns.source],
+          set: {
+            status: "COMPLETED",
+            requestCount: 1,
+            discoveredCount: batch.ids.length,
+            uniqueCount: new Set(batch.ids).size,
+            error: null,
+            completedAt: new Date(),
+          },
+        });
+      await db.insert(jobEvents).values({
+        id: randomUUID(),
+        jobId,
+        stage: `SOURCE:${source}`,
+        detail: `${batch.ids.length} matching permitted records; adapter v1`,
+      });
+    } catch {
+      await db
+        .insert(sourceRuns)
+        .values({
+          jobId,
+          source,
+          adapterVersion: "1",
+          status: "FAILED",
+          requestCount: 1,
+          error: "Selected source failed. No other source was substituted.",
+          startedAt,
+          completedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [sourceRuns.jobId, sourceRuns.source],
+          set: {
+            status: "FAILED",
+            requestCount: 1,
+            error: "Selected source failed. No other source was substituted.",
+            completedAt: new Date(),
+          },
+        });
+      await db.insert(jobEvents).values({
+        id: randomUUID(),
+        jobId,
+        stage: `SOURCE_FAILED:${source}`,
+        detail:
+          "Selected discovery source failed; no fallback source was used.",
+      });
+    }
+  }
+  if (!globalMatches && !ids.length && job.input.sources.length) {
+    const runs = await db
+      .select()
+      .from(sourceRuns)
+      .where(eq(sourceRuns.jobId, jobId));
+    if (runs.length && runs.every((run) => run.status === "FAILED"))
+      throw new Error("All selected sources failed");
   }
   const all = [...new Set(ids)];
   let selected = all.slice(0, job.input.limit);
@@ -89,6 +160,20 @@ export async function discover(jobId: string, discoveryToken?: string) {
         if (!matches.has(record.id)) matches.set(record.id, record);
     selected = [...matches.keys()].slice(0, job.input.limit);
   }
+  const candidateRows = selected.length
+    ? await db
+        .select({ id: businesses.id, record: businesses.record })
+        .from(businesses)
+        .where(
+          and(
+            eq(businesses.ownerId, job.ownerId),
+            inArray(businesses.id, selected),
+          ),
+        )
+    : [];
+  const candidateRecords = new Map(
+    candidateRows.map((row) => [row.id, row.record]),
+  );
   await db.transaction(async (tx) => {
     const [current] = await tx
       .select()
@@ -103,7 +188,20 @@ export async function discover(jobId: string, discoveryToken?: string) {
     for (const id of selected)
       await tx
         .insert(jobItems)
-        .values({ jobId, businessId: id, result: matches.get(id) })
+        .values({
+          jobId,
+          businessId: id,
+          result: {
+            ...(matches.get(id) ?? candidateRecords.get(id)!),
+            domainMatch: matches.get(id)?.domainMatch,
+            discoveredBy: [
+              ...(attribution.get(id) ??
+                [candidateRecords.get(id)?.source].filter(
+                  (v): v is string => !!v,
+                )),
+            ],
+          },
+        })
         .onConflictDoNothing();
     await tx
       .update(jobs)
@@ -174,6 +272,7 @@ export async function processBusiness(jobId: string, businessId: string) {
     if (!row) throw new Error("Business not accessible");
     let record: BusinessRecord = {
       ...row.record,
+      discoveredBy: claimed.result?.discoveredBy ?? [row.record.source],
       researchScope:
         job.input.scope === "global" ? "global" : row.record.researchScope,
       domainMatch: claimed.result?.domainMatch,

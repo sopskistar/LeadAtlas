@@ -222,6 +222,36 @@ export const sourceConfigs = pgTable(
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.source] })],
 );
+export const sourcePreferences = pgTable(
+  "source_preferences",
+  {
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    product: text().notNull(),
+    sources: jsonb().$type<string[]>().notNull().default([]),
+    updatedAt: time("updated_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.product] })],
+);
+export const sourceRuns = pgTable(
+  "job_source_runs",
+  {
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    source: text().notNull(),
+    adapterVersion: text("adapter_version").notNull(),
+    status: text().notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    discoveredCount: integer("discovered_count").notNull().default(0),
+    uniqueCount: integer("unique_count").notNull().default(0),
+    error: text(),
+    startedAt: time("started_at").notNull().defaultNow(),
+    completedAt: time("completed_at"),
+  },
+  (t) => [primaryKey({ columns: [t.jobId, t.source] })],
+);
 export const ingestionBatches = pgTable(
   "ingestion_batches",
   {

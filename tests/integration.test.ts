@@ -56,7 +56,10 @@ async function request(
       },
       ...(data !== undefined ? { body: JSON.stringify(data) } : {}),
     }),
-    path.split("/"),
+    new URL("http://localhost/api/" + path).pathname
+      .split("/")
+      .filter(Boolean)
+      .slice(1),
   );
 }
 async function signup(email: string) {
@@ -286,6 +289,16 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect(details.job.status).toBe("COMPLETED");
     expect(details.job.processed).toBe(1);
     expect(details.records[0].quality.status).toBe("QUALIFIED");
+    expect(details.records[0].discoveredBy).toEqual(["imports"]);
+    expect(details.sources).toMatchObject([
+      {
+        source: "imports",
+        adapterVersion: "1",
+        status: "COMPLETED",
+        discoveredCount: 1,
+        uniqueCount: 1,
+      },
+    ]);
     const output = await request(`jobs/${id}/export`, "POST", {});
     expect(output.headers.get("X-Exported-Count")).toBe("1");
     expect(await output.text()).toBe(
@@ -748,6 +761,40 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect(status).not.toHaveProperty("sources");
     expect(status).not.toHaveProperty("database");
     expect(status).not.toHaveProperty("verifier");
+  });
+  it("persists source choices independently per finder and rejects unapproved providers", async () => {
+    const initial = await request("source-preferences?product=contacts");
+    expect((await initial.json()).selected).toEqual(["overture", "imports"]);
+    expect(
+      (
+        await request("source-preferences?product=contacts", "PUT", {
+          product: "contacts",
+          sources: ["imports"],
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      await (await request("source-preferences?product=opportunities")).json(),
+    ).toMatchObject({ selected: ["overture", "imports"] });
+    expect(
+      await (await request("source-preferences?product=contacts")).json(),
+    ).toMatchObject({ selected: ["imports"] });
+    expect(
+      (
+        await request("source-preferences?product=contacts", "PUT", {
+          product: "contacts",
+          sources: ["google"],
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request("source-preferences?product=contacts", "PUT", {
+          product: "contacts",
+          sources: [],
+        })
+      ).status,
+    ).toBe(400);
   });
   it("uses expiring single-use reset tokens, rejects weak passwords, and revokes existing sessions", async () => {
     const target = await signup("recovery@test.example");

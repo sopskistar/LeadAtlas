@@ -23,6 +23,8 @@ import {
   audit,
   quotaCounters,
   user,
+  sourcePreferences,
+  sourceRuns,
 } from "../db/schema";
 import { getAuth, authConfigured } from "./auth";
 import { createJob, jobsConfigured, consumeProvider } from "./jobs";
@@ -209,6 +211,120 @@ export async function handleApi(req: Request, segments: string[]) {
     }
     const ownerId = identity.user.id;
     const db = getDb();
+    if (path === "source-preferences") {
+      const product = url.searchParams.get("product") ?? "contacts";
+      if (!["contacts", "opportunities"].includes(product))
+        throw new ApiError(400, "Choose a supported business finder.");
+      const supported =
+        product === "contacts"
+          ? ["overture", "imports"]
+          : ["overture", "imports"];
+      const catalog = [
+        {
+          id: "google",
+          name: "Google Maps",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Places content has strict display and retention limits; no compliant persistent lead-record adapter is connected.",
+        },
+        {
+          id: "bing",
+          name: "Bing Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "A licensed Bing SERP adapter is not connected to the local business discovery pipeline.",
+        },
+        {
+          id: "facebook",
+          name: "Facebook Pages",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Meta app review, approved access and a permitted business discovery use case are required.",
+        },
+        {
+          id: "instagram",
+          name: "Instagram Professional Business Profiles",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Meta professional-account permissions do not provide a general city and niche business directory.",
+        },
+        {
+          id: "google_search",
+          name: "Google Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "A licensed search adapter for local finder jobs is not connected.",
+        },
+        {
+          id: "brave",
+          name: "Brave Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "Brave may provide website research hints; it is not wired as an initial local business discovery source.",
+        },
+        {
+          id: "overture",
+          name: "Overture Places",
+          state: "AVAILABLE",
+          reason:
+            "Searches permitted Overture records imported into this workspace.",
+        },
+        {
+          id: "imports",
+          name: "Authorized directories & chamber listings",
+          state: "AVAILABLE",
+          reason:
+            "Searches only records imported with source-specific storage and export rights.",
+        },
+      ];
+      if (req.method === "GET") {
+        const [preference] = await db
+          .select()
+          .from(sourcePreferences)
+          .where(
+            and(
+              eq(sourcePreferences.ownerId, ownerId),
+              eq(sourcePreferences.product, product),
+            ),
+          );
+        return json({
+          supported,
+          selected:
+            preference?.product === product
+              ? preference.sources.filter((id) => supported.includes(id))
+              : supported,
+          catalog,
+        });
+      }
+      if (req.method === "PUT") {
+        const input = z
+          .object({
+            product: z.enum(["contacts", "opportunities"]),
+            sources: z
+              .array(z.enum(["overture", "imports"]))
+              .min(1)
+              .max(2),
+          })
+          .parse(await body(req));
+        const [saved] = await db
+          .insert(sourcePreferences)
+          .values({
+            ownerId,
+            product: input.product,
+            sources: [...new Set(input.sources)],
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [sourcePreferences.ownerId, sourcePreferences.product],
+            set: {
+              sources: [...new Set(input.sources)],
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        return json({ selected: saved.sources });
+      }
+    }
     const page = Math.max(
       1,
       Math.min(10000, Number(url.searchParams.get("page") ?? 1) || 1),
@@ -390,6 +506,10 @@ export async function handleApi(req: Request, segments: string[]) {
                   : r.quality.status === quality),
             ),
           events,
+          sources: await db
+            .select()
+            .from(sourceRuns)
+            .where(eq(sourceRuns.jobId, job.id)),
           breakdown,
           page,
         });

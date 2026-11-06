@@ -152,6 +152,42 @@ test("finder contracts preserve local fields and submit worldwide domains with a
       },
     }),
   );
+  await page.route("**/api/source-preferences**", async (route) => {
+    const request = route.request();
+    const available = ["overture", "imports"];
+    if (request.method() === "PUT")
+      return route.fulfill({
+        json: { selected: request.postDataJSON().sources },
+      });
+    return route.fulfill({
+      json: {
+        supported: available,
+        selected: available,
+        catalog: [
+          ["google", "Google Maps", "AWAITING_APPROVAL"],
+          ["bing", "Bing Search", "NOT_CONNECTED"],
+          ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
+          [
+            "instagram",
+            "Instagram Professional Business Profiles",
+            "AWAITING_APPROVAL",
+          ],
+          ["google_search", "Google Search", "NOT_CONNECTED"],
+          ["brave", "Brave Search", "NOT_CONNECTED"],
+          ["overture", "Overture Places", "AVAILABLE"],
+          ["imports", "Authorized directories & chamber listings", "AVAILABLE"],
+        ].map(([id, name, state]) => ({
+          id,
+          name,
+          state,
+          reason:
+            state === "AVAILABLE"
+              ? "Authorized synthetic source"
+              : "Not connected",
+        })),
+      },
+    });
+  });
   const payloads: Record<string, unknown>[] = [];
   await page.route("**/api/jobs", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
@@ -193,6 +229,10 @@ test("finder contracts preserve local fields and submit worldwide domains with a
     expect(payloads.at(-1)).toMatchObject({
       product,
     });
+    if (product === "contacts" || product === "opportunities")
+      expect(payloads.at(-1)).toMatchObject({
+        sources: ["overture", "imports"],
+      });
     expect(payloads.at(-1)).not.toHaveProperty("limit");
     expect(payloads.at(-1)).not.toHaveProperty("queryBudget");
     if (product === "domains") {
@@ -231,6 +271,74 @@ test("finder contracts preserve local fields and submit worldwide domains with a
         sources: ["overture", "imports", "canada"],
       });
   }
+});
+
+test("business finder source choices persist independently and unavailable channels stay disabled", async ({
+  page,
+}) => {
+  const choices = new Map<string, string[]>();
+  const available = ["overture", "imports"];
+  await page.route("**/api/source-preferences**", async (route) => {
+    const request = route.request();
+    if (request.method() === "PUT") {
+      const body = request.postDataJSON() as {
+        product: string;
+        sources: string[];
+      };
+      choices.set(body.product, body.sources);
+      return route.fulfill({ json: { selected: body.sources } });
+    }
+    const product =
+      new URL(request.url()).searchParams.get("product") ?? "contacts";
+    return route.fulfill({
+      json: {
+        supported: available,
+        selected: choices.get(product) ?? available,
+        catalog: [
+          ["google", "Google Maps", "AWAITING_APPROVAL"],
+          ["bing", "Bing Search", "NOT_CONNECTED"],
+          ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
+          [
+            "instagram",
+            "Instagram Professional Business Profiles",
+            "AWAITING_APPROVAL",
+          ],
+          ["google_search", "Google Search", "NOT_CONNECTED"],
+          ["brave", "Brave Search", "NOT_CONNECTED"],
+          ["overture", "Overture Places", "AVAILABLE"],
+          ["imports", "Authorized directories & chamber listings", "AVAILABLE"],
+        ].map(([id, name, state]) => ({
+          id,
+          name,
+          state,
+          reason:
+            state === "AVAILABLE" ? "Authorized test source" : "Not connected",
+        })),
+      },
+    });
+  });
+
+  await page.goto("/business-contacts");
+  const contacts = page.getByRole("group", { name: "Lead sources" });
+  await expect(contacts.getByLabel("Google Maps")).toBeDisabled();
+  await expect(contacts.getByLabel("Overture Places")).toBeChecked();
+  await contacts
+    .getByLabel("Authorized directories & chamber listings")
+    .uncheck();
+  await expect.poll(() => choices.get("contacts")).toEqual(["overture"]);
+
+  await page.goto("/website-opportunities");
+  const opportunities = page.getByRole("group", { name: "Lead sources" });
+  await expect(
+    opportunities.getByLabel("Authorized directories & chamber listings"),
+  ).toBeChecked();
+
+  await page.goto("/business-contacts");
+  await expect(
+    page
+      .getByRole("group", { name: "Lead sources" })
+      .getByLabel("Authorized directories & chamber listings"),
+  ).not.toBeChecked();
 });
 
 test("research rows and evidence remain usable at Hallmark's eight widths", async ({

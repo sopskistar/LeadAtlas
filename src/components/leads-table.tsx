@@ -78,6 +78,7 @@ export function LeadsTable({
             <thead>
               <tr>
                 <th>Business name</th>
+                <th>Discovery source</th>
                 {product === "domains" && (
                   <>
                     <th>Current website</th>
@@ -105,6 +106,13 @@ export function LeadsTable({
                         .join(" / ") || "Location not established"}
                     </div>
                     {r.fixture && <Badge value="DEMO FIXTURE" />}
+                  </td>
+                  <td data-label="Discovery source">
+                    {[...new Set(r.discoveredBy ?? [r.source])].map(
+                      (source) => (
+                        <Badge key={source} value={source} />
+                      ),
+                    )}
                   </td>
                   {product === "domains" && (
                     <>

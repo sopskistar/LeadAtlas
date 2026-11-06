@@ -30,6 +30,40 @@ export function SearchForm({ product }: { product: Product }) {
   const [niche, setNiche] = useState("");
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [strategy, setStrategy] = useState("auto");
+  const [sourceOverride, setSourceOverride] = useState<{
+    product: "contacts" | "opportunities";
+    sources: string[];
+  } | null>(null);
+  const [sourceError, setSourceError] = useState("");
+  const { data: sourceSettings } = useResource<{
+    selected: string[];
+    supported: string[];
+    catalog: { id: string; name: string; state: string; reason: string }[];
+  }>(
+    product === "contacts" || product === "opportunities"
+      ? `/api/source-preferences?product=${product}`
+      : "",
+  );
+  const sources = (sourceOverride?.product === product
+    ? sourceOverride.sources
+    : null) ??
+    sourceSettings?.selected ?? ["overture", "imports"];
+  async function updateSources(next: string[]) {
+    if (!next.length) return;
+    if (product !== "contacts" && product !== "opportunities") return;
+    setSourceOverride({ product, sources: next });
+    setSourceError("");
+    try {
+      await api("/api/source-preferences", {
+        method: "PUT",
+        body: JSON.stringify({ product, sources: next }),
+      });
+    } catch (e) {
+      setSourceError(
+        e instanceof Error ? e.message : "Could not save source choices.",
+      );
+    }
+  }
   const available =
     product === "domains" ? status?.domainSearch : status?.search;
   const loadCities = useCallback(
@@ -61,6 +95,14 @@ export function SearchForm({ product }: { product: Product }) {
     setError("");
     const data = new FormData(e.currentTarget);
     try {
+      if (product === "contacts" || product === "opportunities") {
+        if (!sources.length)
+          throw new Error("Choose at least one available lead source.");
+        await api("/api/source-preferences", {
+          method: "PUT",
+          body: JSON.stringify({ product, sources }),
+        });
+      }
       const result = await api<{ jobId: string }>("/api/jobs", {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
@@ -96,7 +138,7 @@ export function SearchForm({ product }: { product: Product }) {
                 sources:
                   product === "new"
                     ? ["overture", "imports", "canada"]
-                    : ["overture", "imports"],
+                    : sources,
               }),
           ...(product === "new"
             ? { since: data.get("since"), until: data.get("until") }
@@ -303,6 +345,71 @@ export function SearchForm({ product }: { product: Product }) {
                     <input required name="until" type="date" />
                   </label>
                 </>
+              )}
+              {(product === "contacts" || product === "opportunities") && (
+                <fieldset
+                  className="full stack source-selector"
+                  aria-busy={!sourceSettings}
+                >
+                  <legend>Lead sources</legend>
+                  <p className="small muted">
+                    Choose which authorized business records to search. Website
+                    and email checks run separately.
+                  </p>
+                  <div className="row">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        void updateSources(
+                          sourceSettings?.supported ?? ["overture", "imports"],
+                        )
+                      }
+                    >
+                      Select all available
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setSourceOverride({
+                          product,
+                          sources: [],
+                        })
+                      }
+                    >
+                      Clear selection
+                    </Button>
+                  </div>
+                  {(sourceSettings?.catalog ?? []).map((source) => {
+                    const selectable = source.state === "AVAILABLE";
+                    return (
+                      <label className="check" key={source.id}>
+                        <input
+                          type="checkbox"
+                          disabled={!selectable}
+                          checked={sources.includes(source.id)}
+                          onChange={(event) =>
+                            void updateSources(
+                              event.target.checked
+                                ? [...sources, source.id]
+                                : sources.filter((id) => id !== source.id),
+                            )
+                          }
+                        />
+                        <span>
+                          {source.name}{" "}
+                          <span className="small muted">
+                            {selectable
+                              ? source.reason
+                              : `${source.state.replaceAll("_", " ")}: ${source.reason}`}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                  <ErrorNotice message={sourceError} />
+                </fieldset>
               )}
               {product === "domains" && (
                 <details className="full advanced-filters">

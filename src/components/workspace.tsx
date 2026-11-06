@@ -139,6 +139,11 @@ export function JobList() {
                               .filter(Boolean)
                               .join(", ")}
                       </div>
+                      {j.input.product !== "domains" && (
+                        <div className="small muted">
+                          Sources: {j.input.sources.join(", ")}
+                        </div>
+                      )}
                     </td>
                     <td data-label="Status">
                       <Badge value={j.status} />
@@ -211,6 +216,13 @@ export function JobDetail({ id }: { id: string }) {
     records: BusinessRecord[];
     events: { stage: string; detail: string; createdAt: string }[];
     breakdown: { state: string; count: number }[];
+    sources: {
+      source: string;
+      status: string;
+      discoveredCount: number;
+      uniqueCount: number;
+      error: string | null;
+    }[];
   }>(
     `/api/jobs/${id}?page=${page}${quality ? `&quality=${quality}` : ""}`,
     4000,
@@ -343,6 +355,23 @@ export function JobDetail({ id }: { id: string }) {
                   </span>
                 ))}
               </div>
+              {data.job.input.product !== "domains" && (
+                <div
+                  className="stack small"
+                  aria-label="Discovery source results"
+                >
+                  <strong>Selected sources</strong>
+                  <p>{data.job.input.sources.join(", ")}</p>
+                  {data.sources.map((source) => (
+                    <p key={source.source}>
+                      {source.source}: {source.status.toLowerCase()} ·{" "}
+                      {source.discoveredCount} candidates · {source.uniqueCount}{" "}
+                      unique
+                      {source.error ? ` · ${source.error}` : ""}
+                    </p>
+                  ))}
+                </div>
+              )}
               <ErrorNotice message={data.job.error} />
             </div>
             <div className="card table-card">
