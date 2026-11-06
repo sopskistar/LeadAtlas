@@ -78,11 +78,16 @@ test("transparent shared logo, four unchanged cards and restored five-row direct
     });
   }
 });
-test("updates signup is honest when unavailable and testimonials stay hidden without approved reviews", async ({
+test("updates signup is honest when unavailable and use cases stay distinct from approved reviews", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".testimonial-section")).toHaveCount(0);
+  const useCases = page.locator(".testimonial-section");
+  await expect(
+    useCases.getByRole("heading", { name: "Research for your work." }),
+  ).toBeVisible();
+  await expect(useCases.getByRole("article")).toHaveCount(5);
+  await expect(useCases.getByRole("blockquote")).toHaveCount(0);
   const form = page.getByRole("form", { name: "Product updates subscription" });
   await expect(
     form.getByText("Updates signup is temporarily unavailable.", {
@@ -93,6 +98,269 @@ test("updates signup is honest when unavailable and testimonials stay hidden wit
     form.getByRole("button", { name: "Subscribe to updates" }),
   ).toBeDisabled();
   await expect(form.getByRole("checkbox")).not.toBeChecked();
+});
+
+test("both business finders show every source and persist select-all and clear", async ({
+  page,
+}) => {
+  const catalog = [
+    ["google", "Google Maps", "AWAITING_APPROVAL"],
+    ["bing", "Bing Search", "NOT_CONNECTED"],
+    ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
+    ["instagram", "Instagram Business", "AWAITING_APPROVAL"],
+    ["google_search", "Google Search", "NOT_CONNECTED"],
+    ["brave", "Brave Search", "NOT_CONNECTED"],
+    ["overture", "Overture Places", "AVAILABLE"],
+    ["imports", "Authorized Business Directories", "AVAILABLE"],
+  ];
+  const available = ["overture", "imports"];
+  const preferences = new Map<string, string[]>();
+  await page.route("**/api/status", (route) =>
+    route.fulfill({ json: { auth: true, search: true, domainSearch: true } }),
+  );
+  await page.route("**/api/session", (route) =>
+    route.fulfill({
+      json: { user: { id: "TEST fixture owner" }, isAdmin: false },
+    }),
+  );
+  await page.route("**/api/source-preferences**", async (route) => {
+    const request = route.request();
+    const product =
+      new URL(request.url()).searchParams.get("product") ?? "contacts";
+    if (request.method() === "PUT") {
+      const body = request.postDataJSON() as {
+        product: string;
+        sources: string[];
+      };
+      preferences.set(body.product, body.sources);
+      return route.fulfill({ json: { selected: body.sources } });
+    }
+    return route.fulfill({
+      json: {
+        supported: available,
+        selected: preferences.get(product) ?? available,
+        catalog: catalog.map(([id, name, state]) => ({
+          id,
+          name,
+          state,
+          reason: "TEST fixture source status",
+        })),
+      },
+    });
+  });
+
+  for (const [path, product] of [
+    ["/business-contacts", "contacts"],
+    ["/website-opportunities", "opportunities"],
+  ]) {
+    await page.goto(path);
+    const selector = page.getByRole("group", { name: "Lead sources" });
+    await expect(selector.getByRole("checkbox")).toHaveCount(8);
+    await expect(
+      selector.getByText("Choose where to find your leads.", { exact: false }),
+    ).toBeVisible();
+    await expect(selector.getByLabel("Google Maps")).toBeDisabled();
+    await expect(selector.getByLabel("Bing Search")).toBeDisabled();
+    await expect(selector.getByLabel("Overture Places")).toBeChecked();
+    await expect(selector.getByText("2 selected of 2 available")).toBeVisible();
+    await selector.getByRole("button", { name: "Clear selection" }).click();
+    await expect(selector.getByLabel("Overture Places")).not.toBeChecked();
+    await expect(selector.getByText("0 selected of 2 available")).toBeVisible();
+    await page.goto(path);
+    await expect(
+      page
+        .getByRole("group", { name: "Lead sources" })
+        .getByLabel("Overture Places"),
+    ).not.toBeChecked();
+    await page
+      .getByRole("group", { name: "Lead sources" })
+      .getByRole("button", { name: "Select all available" })
+      .click();
+    const allSelected = page.getByRole("group", { name: "Lead sources" });
+    await expect(allSelected.getByLabel("Overture Places")).toBeChecked();
+    await expect(
+      allSelected.getByLabel("Authorized Business Directories"),
+    ).toBeChecked();
+    await expect(
+      allSelected.getByText("2 selected of 2 available"),
+    ).toBeVisible();
+    expect(preferences.get(product)).toEqual(available);
+    for (const theme of ["light", "dark"]) {
+      await page
+        .getByRole("combobox", { name: "Color theme", exact: true })
+        .first()
+        .selectOption(theme);
+      await selector.screenshot({
+        path: `docs/screenshots/frontend-storytelling/after/sources-${test.info().project.name}-${product}-fixture-${theme}.png`,
+      });
+    }
+  }
+});
+
+test("empty source availability is explained while all eight channels stay visible", async ({
+  page,
+}) => {
+  await page.route("**/api/status", (route) =>
+    route.fulfill({ json: { auth: true, search: true } }),
+  );
+  await page.route("**/api/session", (route) =>
+    route.fulfill({
+      json: { user: { id: "TEST fixture owner" }, isAdmin: false },
+    }),
+  );
+  await page.route("**/api/source-preferences**", (route) =>
+    route.fulfill({
+      json: {
+        supported: [],
+        selected: [],
+        catalog: [
+          ["google", "Google Maps", "AWAITING_APPROVAL"],
+          ["bing", "Bing Search", "NOT_CONNECTED"],
+          ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
+          ["instagram", "Instagram Business", "AWAITING_APPROVAL"],
+          ["google_search", "Google Search", "NOT_CONNECTED"],
+          ["brave", "Brave Search", "NOT_CONNECTED"],
+          ["overture", "Overture Places", "NOT_CONFIGURED"],
+          ["imports", "Authorized Business Directories", "NOT_CONFIGURED"],
+        ].map(([id, name, state]) => ({
+          id,
+          name,
+          state,
+          reason: "TEST fixture",
+        })),
+      },
+    }),
+  );
+  await page.goto("/business-contacts");
+  const selector = page.getByRole("group", { name: "Lead sources" });
+  await expect(selector.getByRole("checkbox")).toHaveCount(8);
+  await expect(
+    selector.getByText(
+      "No discovery sources are available for this workspace yet.",
+    ),
+  ).toBeVisible();
+  await expect(
+    selector.getByRole("button", { name: "Select all available" }),
+  ).toBeDisabled();
+  await expect(selector.getByLabel("Overture Places")).toBeDisabled();
+  if (test.info().project.name === "desktop") {
+    for (const theme of ["light", "dark"]) {
+      await page
+        .getByRole("combobox", { name: "Color theme", exact: true })
+        .first()
+        .selectOption(theme);
+      await selector.screenshot({
+        path: `docs/screenshots/frontend-storytelling/after/sources-unavailable-${theme}.png`,
+      });
+    }
+  }
+});
+
+test("workflow preview and use cases are responsive, labeled, and motion-safe", async ({
+  page,
+}) => {
+  await page.route("**/api/testimonials", (route) =>
+    route.fulfill({ json: { reviews: [] } }),
+  );
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "From discovery to qualified leads." }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Sample record only. No live search or verification is shown.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open sample tour" }),
+  ).toHaveAttribute("href", "/tour");
+  const stories = page.locator(".testimonial-section");
+  await expect(stories.getByRole("article")).toHaveCount(5);
+  await expect(
+    stories.locator('.testimonial-sequence[aria-hidden="true"]'),
+  ).toHaveAttribute("inert", "");
+  if (test.info().project.name === "desktop") {
+    const motion = stories.getByRole("button", { name: "Pause movement" });
+    await stories.locator(".testimonial-viewport").focus();
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationPlayState),
+      )
+      .toBe("paused");
+    await motion.focus();
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationPlayState),
+      )
+      .toBe("running");
+    await motion.click();
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationPlayState),
+      )
+      .toBe("paused");
+    await stories.getByRole("button", { name: "Resume movement" }).click();
+    await expect(
+      stories.getByRole("button", { name: "Pause movement" }),
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationPlayState),
+      )
+      .toBe("running");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationName),
+      )
+      .toBe("none");
+  } else {
+    await expect(stories.getByRole("button", { name: /movement/ })).toHaveCount(
+      0,
+    );
+    await expect
+      .poll(() =>
+        page
+          .locator(".testimonial-track")
+          .evaluate((el) => getComputedStyle(el).animationName),
+      )
+      .toBe("none");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  const viewport = stories.locator(".testimonial-viewport");
+  await expect
+    .poll(() => viewport.evaluate((el) => el.scrollWidth > el.clientWidth))
+    .toBe(true);
+  if (test.info().project.name === "desktop") {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    for (const [name, width, theme] of [
+      ["desktop-light", 1440, "light"],
+      ["desktop-dark", 1440, "dark"],
+      ["mobile-light", 390, "light"],
+      ["mobile-dark", 390, "dark"],
+    ] as const) {
+      await page.setViewportSize({ width, height: width > 640 ? 1000 : 844 });
+      await page
+        .getByRole("combobox", { name: "Color theme", exact: true })
+        .first()
+        .selectOption(theme);
+      await page.screenshot({
+        path: `docs/screenshots/frontend-storytelling/after/home-${name}.png`,
+        fullPage: true,
+      });
+    }
+  }
 });
 test("updates form handles real contract states without claiming subscription before confirmation", async ({
   page,
@@ -209,10 +477,9 @@ test("testimonial layout renders only supplied published records and remains acc
   await expect(section.getByRole("blockquote")).toContainText(
     "TEST FIXTURE ONLY",
   );
-  await expect(section.locator("time")).toHaveAttribute(
-    "datetime",
-    "2026-01-01T12:00:00.000Z",
-  );
+  await expect(
+    section.locator('.testimonial-sequence:not([aria-hidden="true"]) time'),
+  ).toHaveAttribute("datetime", "2026-01-01T12:00:00.000Z");
   const results = await new AxeBuilder({ page })
     .include(".testimonial-section")
     .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])

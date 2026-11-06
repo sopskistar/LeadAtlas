@@ -3,7 +3,6 @@ import {
   UpdatesSignup,
 } from "@/components/homepage-engagement";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowUpRight,
   Globe2,
@@ -12,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { ProductCards, products } from "@/components/catalog";
+import { ProductWorkflowPreview } from "@/components/product-workflow-preview";
 import { Brand, PublicHeader } from "@/components/navigation";
 
 export default function Home() {
@@ -117,27 +117,7 @@ export default function Home() {
             })}
           </div>
         </section>
-        <section id="how-it-works" className="workflow-section section-anchor">
-          <div className="section-intro">
-            <h2>See what you’re checking.</h2>
-            <p>Find, inspect, save. Keep the evidence with the contact.</p>
-          </div>
-          <figure className="product-capture">
-            <Image
-              src="/images/research-tour.png"
-              width={1200}
-              height={570}
-              alt="LeadAtlas sample tour showing the research workflow. All sample details are fictional."
-            />
-            <figcaption>
-              <span>Illustrative preview</span>
-              <span>Fictional business · Sample only</span>
-              <Link className="link" href="/tour">
-                Open the interactive tour
-              </Link>
-            </figcaption>
-          </figure>
-        </section>
+        <ProductWorkflowPreview />
         <section id="who-its-for" className="audience-section section-anchor">
           <h2>Research for the work you do.</h2>
           <div className="audience-list">

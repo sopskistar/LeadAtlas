@@ -8,6 +8,36 @@ import type { Product } from "@/lib/core/types";
 import { Button, ErrorNotice, api, useResource } from "./ui";
 import { Combobox, type Choice } from "./combobox";
 import { products } from "./catalog";
+const visibleLeadSources = [
+  { id: "google", name: "Google Maps", state: "AWAITING_APPROVAL" },
+  { id: "bing", name: "Bing Search", state: "NOT_CONNECTED" },
+  { id: "facebook", name: "Facebook Pages", state: "AWAITING_APPROVAL" },
+  { id: "instagram", name: "Instagram Business", state: "AWAITING_APPROVAL" },
+  { id: "google_search", name: "Google Search", state: "NOT_CONNECTED" },
+  { id: "brave", name: "Brave Search", state: "NOT_CONNECTED" },
+  { id: "overture", name: "Overture Places", state: "NOT_CONFIGURED" },
+  {
+    id: "imports",
+    name: "Authorized Business Directories",
+    state: "NOT_CONFIGURED",
+  },
+];
+function sourceStateLabel(state: string) {
+  switch (state) {
+    case "AVAILABLE":
+      return "Available";
+    case "AWAITING_APPROVAL":
+      return "Approval required";
+    case "TEMPORARILY_UNAVAILABLE":
+      return "Temporarily unavailable";
+    case "UNSUPPORTED_FOR_SEARCH":
+      return "Unavailable for this search";
+    case "NOT_CONFIGURED":
+      return "No permitted records yet";
+    default:
+      return "Not connected";
+  }
+}
 export function SearchForm({ product }: { product: Product }) {
   const item = products.find((p) => p.id === product)!;
   const router = useRouter();
@@ -35,7 +65,11 @@ export function SearchForm({ product }: { product: Product }) {
     sources: string[];
   } | null>(null);
   const [sourceError, setSourceError] = useState("");
-  const { data: sourceSettings } = useResource<{
+  const {
+    data: sourceSettings,
+    error: sourceSettingsError,
+    loading: sourceSettingsLoading,
+  } = useResource<{
     selected: string[];
     supported: string[];
     catalog: { id: string; name: string; state: string; reason: string }[];
@@ -44,12 +78,11 @@ export function SearchForm({ product }: { product: Product }) {
       ? `/api/source-preferences?product=${product}`
       : "",
   );
-  const sources = (sourceOverride?.product === product
-    ? sourceOverride.sources
-    : null) ??
-    sourceSettings?.selected ?? ["overture", "imports"];
+  const sources =
+    (sourceOverride?.product === product ? sourceOverride.sources : null) ??
+    sourceSettings?.selected ??
+    [];
   async function updateSources(next: string[]) {
-    if (!next.length) return;
     if (product !== "contacts" && product !== "opportunities") return;
     setSourceOverride({ product, sources: next });
     setSourceError("");
@@ -349,21 +382,20 @@ export function SearchForm({ product }: { product: Product }) {
               {(product === "contacts" || product === "opportunities") && (
                 <fieldset
                   className="full stack source-selector"
-                  aria-busy={!sourceSettings}
+                  aria-busy={sourceSettingsLoading}
                 >
                   <legend>Lead sources</legend>
-                  <p className="small muted">
-                    Choose which authorized business records to search. Website
-                    and email checks run separately.
+                  <p className="source-selector-copy">
+                    Choose where to find your leads. Select one or more sources
+                    to discover relevant businesses and contacts.
                   </p>
                   <div className="row">
                     <Button
                       type="button"
                       variant="secondary"
+                      disabled={!sourceSettings?.supported.length}
                       onClick={() =>
-                        void updateSources(
-                          sourceSettings?.supported ?? ["overture", "imports"],
-                        )
+                        void updateSources(sourceSettings?.supported ?? [])
                       }
                     >
                       Select all available
@@ -371,43 +403,82 @@ export function SearchForm({ product }: { product: Product }) {
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() =>
-                        setSourceOverride({
-                          product,
-                          sources: [],
-                        })
-                      }
+                      disabled={!sourceSettings}
+                      onClick={() => void updateSources([])}
                     >
                       Clear selection
                     </Button>
                   </div>
-                  {(sourceSettings?.catalog ?? []).map((source) => {
-                    const selectable = source.state === "AVAILABLE";
-                    return (
-                      <label className="check" key={source.id}>
-                        <input
-                          type="checkbox"
-                          disabled={!selectable}
-                          checked={sources.includes(source.id)}
-                          onChange={(event) =>
-                            void updateSources(
-                              event.target.checked
-                                ? [...sources, source.id]
-                                : sources.filter((id) => id !== source.id),
-                            )
-                          }
-                        />
-                        <span>
-                          {source.name}{" "}
-                          <span className="small muted">
-                            {selectable
-                              ? source.reason
-                              : `${source.state.replaceAll("_", " ")}: ${source.reason}`}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
+                  <p className="source-selection-count" aria-live="polite">
+                    {
+                      sources.filter((id) =>
+                        sourceSettings?.supported.includes(id),
+                      ).length
+                    }{" "}
+                    selected
+                    {sourceSettings?.supported.length
+                      ? ` of ${sourceSettings.supported.length} available`
+                      : ""}
+                  </p>
+                  <div className="source-options">
+                    {(sourceSettings?.catalog ?? visibleLeadSources).map(
+                      (source) => {
+                        const selectable = Boolean(
+                          sourceSettings?.supported.includes(source.id) &&
+                          source.state === "AVAILABLE",
+                        );
+                        const status = sourceSettings
+                          ? sourceStateLabel(source.state)
+                          : sourceSettingsLoading
+                            ? "Checking availability"
+                            : "Sign in to check availability";
+                        return (
+                          <label
+                            className={`source-option${selectable ? " is-available" : " is-unavailable"}`}
+                            key={source.id}
+                          >
+                            <input
+                              aria-label={source.name}
+                              type="checkbox"
+                              disabled={!sourceSettings || !selectable}
+                              checked={Boolean(
+                                selectable && sources.includes(source.id),
+                              )}
+                              onChange={(event) =>
+                                void updateSources(
+                                  event.target.checked
+                                    ? [...sources, source.id]
+                                    : sources.filter((id) => id !== source.id),
+                                )
+                              }
+                            />
+                            <span>
+                              <span className="source-option-name">
+                                {source.name}
+                              </span>
+                              <span className="source-option-state">
+                                {selectable ? "Available" : status}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      },
+                    )}
+                  </div>
+                  {!sourceSettingsLoading && !sourceSettings && (
+                    <p className="source-selector-status" role="status">
+                      {session?.user
+                        ? "Source availability could not be loaded. Reload to try again."
+                        : sourceSettingsError
+                          ? "Sign in to check which sources are available for your workspace."
+                          : "Sign in to check which sources are available for your workspace."}
+                    </p>
+                  )}
+                  {sourceSettings && !sourceSettings.supported.length && (
+                    <p className="source-selector-status" role="status">
+                      No discovery sources are available for this workspace yet.
+                    </p>
+                  )}
                   <ErrorNotice message={sourceError} />
                 </fieldset>
               )}

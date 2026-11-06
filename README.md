@@ -97,3 +97,7 @@ The Hallmark custom-brand frontend redesign continues the existing application. 
 ## Global domain research corrections
 
 Domain Buyer Finder now uses a separate worldwide contract, authorized modular discovery adapters, strict evidence-based domain relationships and the existing verification/suppression/export gates. Keys and explicit use approval are required; no live provider is claimed as validated. See [implementation, limits and release checks](docs/PRODUCT_CORRECTIONS.md), [reference-data provenance](src/lib/reference/SOURCES.md) and the [visual comparison](docs/screenshots/corrections/compare.html). Apply migration `0003_global_discovery_lease` before deploying the paired web/worker changes.
+
+## Frontend storytelling refinement
+
+The eight-item lead-source catalog remains visible when sources are disabled. Availability reflects authorized data in each workspace, and clear selections persist. The homepage retains its four discovery blocks and separate five-row directory, replaces the large tour screenshot with a fictional product-workflow preview, and uses an animated use-case strip until approved reviews exist. See [the refinement report and screenshots](docs/FRONTEND_STORYTELLING_REFINEMENT.md).

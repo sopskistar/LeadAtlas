@@ -167,15 +167,11 @@ test("finder contracts preserve local fields and submit worldwide domains with a
           ["google", "Google Maps", "AWAITING_APPROVAL"],
           ["bing", "Bing Search", "NOT_CONNECTED"],
           ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
-          [
-            "instagram",
-            "Instagram Professional Business Profiles",
-            "AWAITING_APPROVAL",
-          ],
+          ["instagram", "Instagram Business", "AWAITING_APPROVAL"],
           ["google_search", "Google Search", "NOT_CONNECTED"],
           ["brave", "Brave Search", "NOT_CONNECTED"],
           ["overture", "Overture Places", "AVAILABLE"],
-          ["imports", "Authorized directories & chamber listings", "AVAILABLE"],
+          ["imports", "Authorized Business Directories", "AVAILABLE"],
         ].map(([id, name, state]) => ({
           id,
           name,
@@ -298,15 +294,11 @@ test("business finder source choices persist independently and unavailable chann
           ["google", "Google Maps", "AWAITING_APPROVAL"],
           ["bing", "Bing Search", "NOT_CONNECTED"],
           ["facebook", "Facebook Pages", "AWAITING_APPROVAL"],
-          [
-            "instagram",
-            "Instagram Professional Business Profiles",
-            "AWAITING_APPROVAL",
-          ],
+          ["instagram", "Instagram Business", "AWAITING_APPROVAL"],
           ["google_search", "Google Search", "NOT_CONNECTED"],
           ["brave", "Brave Search", "NOT_CONNECTED"],
           ["overture", "Overture Places", "AVAILABLE"],
-          ["imports", "Authorized directories & chamber listings", "AVAILABLE"],
+          ["imports", "Authorized Business Directories", "AVAILABLE"],
         ].map(([id, name, state]) => ({
           id,
           name,
@@ -321,23 +313,22 @@ test("business finder source choices persist independently and unavailable chann
   await page.goto("/business-contacts");
   const contacts = page.getByRole("group", { name: "Lead sources" });
   await expect(contacts.getByLabel("Google Maps")).toBeDisabled();
+  await expect(contacts.getByRole("checkbox")).toHaveCount(8);
   await expect(contacts.getByLabel("Overture Places")).toBeChecked();
-  await contacts
-    .getByLabel("Authorized directories & chamber listings")
-    .uncheck();
+  await contacts.getByLabel("Authorized Business Directories").uncheck();
   await expect.poll(() => choices.get("contacts")).toEqual(["overture"]);
 
   await page.goto("/website-opportunities");
   const opportunities = page.getByRole("group", { name: "Lead sources" });
   await expect(
-    opportunities.getByLabel("Authorized directories & chamber listings"),
+    opportunities.getByLabel("Authorized Business Directories"),
   ).toBeChecked();
 
   await page.goto("/business-contacts");
   await expect(
     page
       .getByRole("group", { name: "Lead sources" })
-      .getByLabel("Authorized directories & chamber listings"),
+      .getByLabel("Authorized Business Directories"),
   ).not.toBeChecked();
 });
 

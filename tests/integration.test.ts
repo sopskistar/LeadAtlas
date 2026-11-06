@@ -763,8 +763,17 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     expect(status).not.toHaveProperty("verifier");
   });
   it("persists source choices independently per finder and rejects unapproved providers", async () => {
+    await importRow("Source preference catalog fixture");
     const initial = await request("source-preferences?product=contacts");
-    expect((await initial.json()).selected).toEqual(["overture", "imports"]);
+    const initialData = await initial.json();
+    expect(initialData.supported).toEqual(["imports"]);
+    expect(initialData.selected).toEqual(["imports"]);
+    expect(initialData.catalog).toHaveLength(8);
+    expect(
+      initialData.catalog.find(
+        (source: { id: string }) => source.id === "overture",
+      ).state,
+    ).toBe("NOT_CONFIGURED");
     expect(
       (
         await request("source-preferences?product=contacts", "PUT", {
@@ -775,10 +784,21 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     ).toBe(200);
     expect(
       await (await request("source-preferences?product=opportunities")).json(),
-    ).toMatchObject({ selected: ["overture", "imports"] });
+    ).toMatchObject({ selected: ["imports"] });
     expect(
       await (await request("source-preferences?product=contacts")).json(),
     ).toMatchObject({ selected: ["imports"] });
+    expect(
+      (
+        await request("source-preferences?product=contacts", "PUT", {
+          product: "contacts",
+          sources: [],
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      await (await request("source-preferences?product=contacts")).json(),
+    ).toMatchObject({ selected: [] });
     expect(
       (
         await request("source-preferences?product=contacts", "PUT", {
@@ -787,14 +807,18 @@ describe("persisted account → permitted import → worker → qualified CSV", 
         })
       ).status,
     ).toBe(400);
-    expect(
-      (
-        await request("source-preferences?product=contacts", "PUT", {
-          product: "contacts",
-          sources: [],
-        })
-      ).status,
-    ).toBe(400);
+    const emptyAccount = await signup("empty-source-catalog@test.example");
+    const emptyCatalog = await (
+      await request(
+        "source-preferences?product=contacts",
+        "GET",
+        undefined,
+        emptyAccount.cookie,
+      )
+    ).json();
+    expect(emptyCatalog.supported).toEqual([]);
+    expect(emptyCatalog.selected).toEqual([]);
+    expect(emptyCatalog.catalog).toHaveLength(8);
   });
   it("uses expiring single-use reset tokens, rejects weak passwords, and revokes existing sessions", async () => {
     const target = await signup("recovery@test.example");

@@ -103,16 +103,32 @@ export function CustomerTestimonials() {
   const { data } = useResource<{ reviews: PublishedTestimonial[] }>(
     "/api/testimonials",
   );
-  if (!data?.reviews.length) return null;
-  return (
-    <section
-      className="testimonial-section"
-      aria-labelledby="testimonials-heading"
-    >
-      <h2 id="testimonials-heading">From LeadAtlas customers.</h2>
-      <div className="testimonial-list">
-        {data.reviews.slice(0, 5).map((review) => (
-          <figure key={review.id}>
+  const [paused, setPaused] = useState(false);
+  const reviews = data?.reviews.slice(0, 5) ?? [];
+  const useCases = [
+    [
+      "Website developers",
+      "Find businesses that may need an independent website.",
+    ],
+    ["Marketing agencies", "Choose the sources behind a focused local search."],
+    [
+      "Sales professionals",
+      "Keep business, contact, and source history together.",
+    ],
+    [
+      "Domain investors",
+      "Compare a domain with related names around the world.",
+    ],
+    ["Business researchers", "Review evidence before saving a prospect."],
+  ] as const;
+  const hasReviews = reviews.length > 0;
+  function stories(clone = false) {
+    return hasReviews
+      ? reviews.map((review) => (
+          <figure
+            className="testimonial-card"
+            key={`${clone ? "clone-" : ""}${review.id}`}
+          >
             <blockquote>
               <p>{review.text}</p>
             </blockquote>
@@ -129,7 +145,58 @@ export function CustomerTestimonials() {
               </span>
             </figcaption>
           </figure>
-        ))}
+        ))
+      : useCases.map(([title, description]) => (
+          <article
+            className="testimonial-card use-case-card"
+            key={`${clone ? "clone-" : ""}${title}`}
+          >
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </article>
+        ));
+  }
+  return (
+    <section
+      className="testimonial-section"
+      aria-labelledby="testimonials-heading"
+    >
+      <div className="testimonial-heading">
+        <div>
+          <h2 id="testimonials-heading">
+            {hasReviews
+              ? "From LeadAtlas customers."
+              : "Research for your work."}
+          </h2>
+          {!hasReviews && <p>Use cases, not customer reviews.</p>}
+        </div>
+        <button
+          className="motion-toggle"
+          type="button"
+          aria-controls="testimonial-track"
+          aria-pressed={paused}
+          onClick={() => setPaused((value) => !value)}
+        >
+          {paused ? "Resume movement" : "Pause movement"}
+        </button>
+      </div>
+      <div
+        className="testimonial-viewport"
+        aria-label={
+          hasReviews ? "Approved customer reviews" : "LeadAtlas use cases"
+        }
+        tabIndex={0}
+      >
+        <div
+          id="testimonial-track"
+          className={`testimonial-track${paused ? " is-paused" : ""}`}
+          aria-live="off"
+        >
+          <div className="testimonial-sequence">{stories()}</div>
+          <div className="testimonial-sequence" aria-hidden="true" inert>
+            {stories(true)}
+          </div>
+        </div>
       </div>
     </section>
   );

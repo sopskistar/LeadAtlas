@@ -63,11 +63,14 @@ test("homepage presents four independent discovery features and the approved ico
         .getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
   await expect(page.locator("#features h2")).toHaveCount(4);
+  await expect(page.locator(".workflow-preview-topline")).toContainText(
+    "Illustrative preview",
+  );
+  await expect(page.locator(".workflow-record-values strong")).toContainText(
+    "Cedarline Plumbing",
+  );
   await expect(
-    page.getByText("Illustrative preview", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Fictional business · Sample only", { exact: true }),
+    page.getByText("Sample record only. No live search or verification is shown."),
   ).toBeVisible();
   await expect(
     page.getByText("Sources & coverage", { exact: true }),
