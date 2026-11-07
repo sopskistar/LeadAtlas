@@ -107,7 +107,7 @@ export function assess(
   )
     reasons.push("Website evidence missing or stale");
   if (
-    product === "contacts" &&
+    (product === "contacts" || product === "domains") &&
     (record.website?.status !== "OWNED_SITE_FOUND" ||
       !record.website.identity ||
       !record.website.functional)

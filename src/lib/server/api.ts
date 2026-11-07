@@ -1,3 +1,12 @@
+import { handleUpdates } from "./updates";
+import {
+  publishedTestimonials,
+  privateTestimonials,
+  saveTestimonial,
+} from "./testimonials";
+import { validRegion } from "../core/locations";
+import { citySuggestions, nicheSuggestions } from "../reference/lookups";
+import { globalDiscoveryConfigured } from "../discovery/providers";
 import { randomUUID } from "node:crypto";
 import { and, eq, desc, sql, count, ilike } from "drizzle-orm";
 import { z } from "zod";
@@ -12,9 +21,10 @@ import {
   exports,
   sourceConfigs,
   audit,
-  geoPlaces,
   quotaCounters,
   user,
+  sourcePreferences,
+  sourceRuns,
 } from "../db/schema";
 import { getAuth, authConfigured } from "./auth";
 import { createJob, jobsConfigured, consumeProvider } from "./jobs";
@@ -141,6 +151,34 @@ export async function handleApi(req: Request, segments: string[]) {
   try {
     const url = new URL(req.url);
     const path = segments.join("/");
+    if (segments[0] === "updates") return handleUpdates(req, segments);
+    if (req.method === "GET" && path === "testimonials")
+      return json({ reviews: await publishedTestimonials() });
+    if (req.method === "GET" && (path === "cities" || path === "niches")) {
+      if (path === "niches")
+        return json({
+          suggestions: nicheSuggestions(url.searchParams.get("q") ?? ""),
+          attribution: "US Census Bureau, 2022 NAICS",
+        });
+      const country = url.searchParams.get("country") ?? "";
+      const region = url.searchParams.get("region") ?? "";
+      if (
+        !["US", "CA"].includes(country) ||
+        !validRegion(country as "US" | "CA", region)
+      )
+        throw new ApiError(
+          400,
+          "Choose a valid country and state or province.",
+        );
+      return json(
+        citySuggestions(
+          country,
+          region,
+          url.searchParams.get("q") ?? "",
+          Number(url.searchParams.get("offset") ?? 0),
+        ),
+      );
+    }
     if (req.method === "GET" && path === "status")
       return json({
         auth: authConfigured(),
@@ -148,6 +186,8 @@ export async function handleApi(req: Request, segments: string[]) {
           authConfigured() &&
           (process.env.NODE_ENV !== "production" || emailConfigured()),
         recovery: authConfigured() && emailConfigured(),
+        domainSearch:
+          authConfigured() && jobsConfigured() && globalDiscoveryConfigured(),
         search:
           authConfigured() && jobsConfigured() && !!process.env.HUNTER_API_KEY,
       });
@@ -171,11 +211,142 @@ export async function handleApi(req: Request, segments: string[]) {
     }
     const ownerId = identity.user.id;
     const db = getDb();
+    if (path === "source-preferences") {
+      const product = url.searchParams.get("product") ?? "contacts";
+      if (!["contacts", "opportunities"].includes(product))
+        throw new ApiError(400, "Choose a supported business finder.");
+      const ownedSources = await db
+        .selectDistinct({ source: businesses.source })
+        .from(businesses)
+        .where(eq(businesses.ownerId, ownerId));
+      const sourcesWithRecords = new Set(ownedSources.map((row) => row.source));
+      const catalog = [
+        {
+          id: "google",
+          name: "Google Maps",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Places content has strict display and retention limits; no compliant persistent lead-record adapter is connected.",
+        },
+        {
+          id: "bing",
+          name: "Bing Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "A licensed Bing SERP adapter is not connected to the local business discovery pipeline.",
+        },
+        {
+          id: "facebook",
+          name: "Facebook Pages",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Meta app review, approved access and a permitted business discovery use case are required.",
+        },
+        {
+          id: "instagram",
+          name: "Instagram Business",
+          state: "AWAITING_APPROVAL",
+          reason:
+            "Meta professional-account permissions do not provide a general city and niche business directory.",
+        },
+        {
+          id: "google_search",
+          name: "Google Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "A licensed search adapter for local finder jobs is not connected.",
+        },
+        {
+          id: "brave",
+          name: "Brave Search",
+          state: "NOT_CONNECTED",
+          reason:
+            "Brave may provide website research hints; it is not wired as an initial local business discovery source.",
+        },
+        {
+          id: "overture",
+          name: "Overture Places",
+          state: sourcesWithRecords.has("overture")
+            ? "AVAILABLE"
+            : "NOT_CONFIGURED",
+          reason: sourcesWithRecords.has("overture")
+            ? "Permitted Overture records are available in this workspace."
+            : "No permitted Overture records are available in this workspace yet.",
+        },
+        {
+          id: "imports",
+          name: "Authorized Business Directories",
+          state: sourcesWithRecords.has("imports")
+            ? "AVAILABLE"
+            : "NOT_CONFIGURED",
+          reason: sourcesWithRecords.has("imports")
+            ? "Permitted directory records are available in this workspace."
+            : "No permitted directory records are available in this workspace yet.",
+        },
+      ];
+      const supported = catalog
+        .filter((source) => source.state === "AVAILABLE")
+        .map((source) => source.id);
+      if (req.method === "GET") {
+        const [preference] = await db
+          .select()
+          .from(sourcePreferences)
+          .where(
+            and(
+              eq(sourcePreferences.ownerId, ownerId),
+              eq(sourcePreferences.product, product),
+            ),
+          );
+        return json({
+          supported,
+          selected:
+            preference?.product === product
+              ? preference.sources.filter((id) => supported.includes(id))
+              : supported,
+          catalog,
+        });
+      }
+      if (req.method === "PUT") {
+        const input = z
+          .object({
+            product: z.enum(["contacts", "opportunities"]),
+            sources: z.array(z.enum(["overture", "imports"])).max(2),
+          })
+          .parse(await body(req));
+        const [saved] = await db
+          .insert(sourcePreferences)
+          .values({
+            ownerId,
+            product: input.product,
+            sources: [...new Set(input.sources)],
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [sourcePreferences.ownerId, sourcePreferences.product],
+            set: {
+              sources: [...new Set(input.sources)],
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        return json({ selected: saved.sources });
+      }
+    }
     const page = Math.max(
       1,
       Math.min(10000, Number(url.searchParams.get("page") ?? 1) || 1),
     );
     const pageSize = 25;
+    if (path === "admin/testimonials") {
+      admin(ownerId);
+      if (req.method === "GET")
+        return json({ reviews: await privateTestimonials() });
+      if (req.method === "POST")
+        return json(
+          { review: await saveTestimonial(await body(req), ownerId) },
+          201,
+        );
+    }
     if (req.method === "GET" && path === "sources") {
       admin(ownerId);
       const configs = await db
@@ -197,27 +368,6 @@ export async function handleApi(req: Request, segments: string[]) {
         verifier: !!process.env.HUNTER_API_KEY,
         email: emailConfigured(),
         sources: sourceRegistry(),
-      });
-    }
-    if (req.method === "GET" && path === "cities") {
-      const rows = await db
-        .select({ city: geoPlaces.city })
-        .from(geoPlaces)
-        .where(
-          and(
-            eq(geoPlaces.country, url.searchParams.get("country") ?? "US"),
-            eq(geoPlaces.region, url.searchParams.get("region") ?? "NY"),
-            ilike(
-              geoPlaces.city,
-              `${escapeLike(url.searchParams.get("q") ?? "")}%`,
-            ),
-          ),
-        )
-        .limit(30);
-      return json({
-        cities: rows.map((r) => r.city),
-        coverageNote:
-          "Reference suggestions only. Any city can be entered; source coverage varies.",
       });
     }
     if (req.method === "GET" && path === "dashboard") {
@@ -308,9 +458,16 @@ export async function handleApi(req: Request, segments: string[]) {
     if (segments[0] === "jobs" && segments[1]) {
       const job = await ownedJob(segments[1], ownerId);
       if (req.method === "GET" && segments.length === 2) {
-        const quality = url.searchParams.get("quality") ?? "QUALIFIED";
+        const quality =
+          url.searchParams.get("quality") ??
+          (job.input.product === "domains" ? "SHORTLIST" : "QUALIFIED");
         const filters = [eq(jobItems.jobId, job.id)];
-        if (quality !== "ALL")
+        if (quality === "SHORTLIST")
+          filters.push(
+            sql`${jobItems.result}->'quality'->>'status' != 'REJECTED'`,
+            sql`${jobItems.result}->'domainMatch' IS NOT NULL`,
+          );
+        else if (quality !== "ALL")
           filters.push(
             sql`${jobItems.result}->'quality'->>'status' = ${quality}`,
           );
@@ -348,8 +505,18 @@ export async function handleApi(req: Request, segments: string[]) {
                   ]
                 : [],
             )
-            .filter((r) => quality === "ALL" || r.quality.status === quality),
+            .filter(
+              (r) =>
+                quality === "ALL" ||
+                (quality === "SHORTLIST"
+                  ? r.quality.status !== "REJECTED" && !!r.domainMatch
+                  : r.quality.status === quality),
+            ),
           events,
+          sources: await db
+            .select()
+            .from(sourceRuns)
+            .where(eq(sourceRuns.jobId, job.id)),
           breakdown,
           page,
         });
@@ -392,6 +559,8 @@ export async function handleApi(req: Request, segments: string[]) {
             status: "QUEUED",
             error: null,
             stage: "Retry queued",
+            discoveryLeaseToken: null,
+            discoveryLeaseUntil: null,
             updatedAt: new Date(),
           })
           .where(

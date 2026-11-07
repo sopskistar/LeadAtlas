@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-05",
+  "branch": "frontend/final-homepage-corrections",
+  "base_commit": "ab53d506106dffdc267bdde86af4fdff6bb68b9a",
+  "mode": "redesign",
+  "depth": "polish",
+  "scope": "targeted homepage and shared brand, plus requested engagement surfaces",
+  "theme": "locked custom blue, navy and white, Albert Sans",
+  "initial_tree": "clean",
+  "preserve": [
+    "hero",
+    "four discovery cards, copy, order and routes",
+    "quality section",
+    "tour, audience, FAQ and footer",
+    "all prospect/auth/worker/export contracts"
+  ],
+  "requested_additions": [
+    "subtle brand tagline",
+    "restored separate five-row directory",
+    "consented double-opt-in updates",
+    "private permissioned review workflow, public section hidden when empty"
+  ],
+  "defect": "Two dark-theme .brand rules created a white padded tile; the optimized production PNG also cropped transparent margins.",
+  "baseline_method": "Actual before screenshots were captured from the previous production build before changes. For the CLI preservation inventory, six read-only source snapshots were reconstructed from clean ab53d50 in /tmp, then compared against current copies with --kept and current browser rendering. The previous historical root before.json was left intact.",
+  "deleted_files_routes_handlers": []
+}

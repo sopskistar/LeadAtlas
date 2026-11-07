@@ -11,6 +11,8 @@ export const products = [
   {
     path: "/business-contacts",
     id: "contacts",
+    discoveryDescription:
+      "Find active businesses with functioning websites and reliable public contact information.",
     title: "Businesses With Websites",
     short: "Businesses With Websites",
     icon: Globe2,
@@ -21,6 +23,8 @@ export const products = [
   {
     path: "/website-opportunities",
     id: "opportunities",
+    discoveryDescription:
+      "Discover active businesses without an identified website and find their public business contacts.",
     title: "Businesses Without Websites",
     short: "Businesses Without Websites",
     icon: Store,
@@ -31,6 +35,8 @@ export const products = [
   {
     path: "/domain-buyer-finder",
     id: "domains",
+    discoveryDescription:
+      "Find businesses using related names or domain variations that may be upgrade prospects for your domain.",
     title: "Domain Buyer Finder",
     short: "Domain Buyer Finder",
     icon: ScanSearch,
@@ -41,6 +47,8 @@ export const products = [
   {
     path: "/new-businesses",
     id: "new",
+    discoveryDescription:
+      "Discover newly registered businesses and research their public presence and contacts.",
     title: "New Business Finder",
     short: "New Business Finder",
     icon: Building2,
@@ -65,30 +73,25 @@ export const features = [
 export function productName(id: string) {
   return products.find((p) => p.id === id)?.title ?? id;
 }
-export function ProductCards() {
+const summaries: Record<string, string> = {
+  contacts: "Functioning websites. Sourced business contacts.",
+  opportunities: "Website opportunities, supported by independent research.",
+  domains: "Close brand names and existing domain variations.",
+  new: "Recent incorporation records. Activity checked separately.",
+  leads: "Saved research, notes and qualified CSV exports.",
+};
+export function ProductCards({ headingLevel = 3 }: { headingLevel?: 2 | 3 }) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   return (
-    <div className="tool-grid">
-      {features.map((p, i) => (
-        <Link href={p.path} className="card tool-card" key={p.id}>
-          <div className="row between">
-            <div className="tool-icon">
-              <p.icon size={21} />
-            </div>
-            <span className="feature-number">0{i + 1}</span>
+    <div className="feature-index">
+      {features.map((p) => (
+        <Link href={p.path} className="feature-row" key={p.id}>
+          <div className="feature-heading">
+            <p.icon size={21} aria-hidden="true" />
+            <Heading>{p.title}</Heading>
           </div>
-          <h3>{p.title}</h3>
-          <p>{p.desc}</p>
-          <div className="feature-example">
-            <span>TRY A SEARCH LIKE</span>
-            {p.example}
-          </div>
-          <span
-            className="row small"
-            style={{ color: "var(--blue)", fontWeight: 600 }}
-          >
-            {p.id === "leads" ? "Manage your leads" : "Explore this finder"}{" "}
-            <ArrowUpRight size={15} />
-          </span>
+          <p>{summaries[p.id]}</p>
+          <ArrowUpRight size={18} aria-hidden="true" />
         </Link>
       ))}
     </div>

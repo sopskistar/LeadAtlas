@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-04",
+  "branch": "feature/global-domain-discovery",
+  "base_commit": "a33852b9524664965ffc2d257803bd6a16a8ba87",
+  "lint": "PASS",
+  "typecheck": "PASS",
+  "production_build": "PASS",
+  "unit_integration": {
+    "files": 13,
+    "passed": 159
+  },
+  "public_browser": {
+    "cases": 38,
+    "passed_first_attempt": 37,
+    "passed_on_retry": 1,
+    "note": "Initial desktop city-suggestion assertion timed out during concurrent audit/browser load. The unchanged test passed on retry."
+  },
+  "focused_geography_browser": {
+    "passed": 2,
+    "retries": 0,
+    "projects": ["desktop", "mobile"]
+  },
+  "authenticated_browser": {
+    "passed": 10,
+    "projects": ["desktop", "mobile"],
+    "database": "isolated localhost PostgreSQL, three synthetic nonexportable records"
+  },
+  "hallmark": {
+    "rendered_urls": 4,
+    "screenshots": 20,
+    "floor_failures": 0,
+    "reflex": 0,
+    "warnings": 0,
+    "responsive_widths": [320, 375, 414, 768, 1024, 1280, 1440, 1920]
+  },
+  "accessibility": "All configured axe checks passed in light and dark themes; keyboard/focus/table scrolling exercised.",
+  "live_acceptance": "Provider credentials, authorized hosts, Neon/Inngest/worker infrastructure and mail delivery remain unvalidated.",
+  "release_requirement": "Apply migration 0003_global_discovery_lease before deploying paired web/worker versions."
+}

@@ -2,9 +2,11 @@
 
 LeadAtlas helps users discover businesses, identify promising leads, and uncover new sales and growth opportunities.
 
-**Find Businesses. Find Opportunities.** A Next.js application for US/Canada business research with four discovery workflows plus lead management and export, persisted evidence and conservative qualification. The original [master specification](LeadAtlas_Codex_Master_Prompt_v2_Quality_First.md) is preserved. The updated source priorities are Facebook Pages, Instagram professional profiles, Google Places (New), Overture Places, then Brave/permitted website research.
+**Find Businesses. Find Opportunities.** A Next.js application for US/Canada business research and worldwide domain-buyer research with four discovery workflows plus lead management and export, persisted evidence and conservative qualification. The original [master specification](LeadAtlas_Codex_Master_Prompt_v2_Quality_First.md) is preserved. The updated source priorities are Facebook Pages, Instagram professional profiles, Google Places (New), Overture Places, then Brave/permitted website research.
 
 This repository contains actual application/backend/worker code. It ships with **no production leads, provider keys, fake results or automatic verified claims**. Nine real, unverified Overture research candidates with source manifests/licences are preserved under `samples/` and are never seeded automatically. Missing configuration is shown in the UI. Google/Meta adapters are restricted; they never feed the export database.
+
+Latest review: [targeted homepage corrections, screenshots and validation](docs/FINAL_FRONTEND_CORRECTIONS.md). Homepage updates signup requires migration **0004**, a verified sender and separate server-only consent secret; testimonials stay hidden until genuine permissioned reviews are approved. The [next lead-discovery architecture](docs/LEAD_DISCOVERY_NEXT_PHASE.md) is researched but not activated.
 
 ## Local setup (Node.js 22+, npm)
 
@@ -60,7 +62,7 @@ Set `HUNTER_API_KEY` for real email verification. Without it, syntax/MX checks r
 | `/admin/sources` (admin only) | Real configuration states, limitations, rights controls and bounded import                                                  |
 | `/settings/account`           | Account/session state, admin ID, privacy/deletion controls                                                                  |
 
-All 50 US states + DC and 13 Canadian provinces/territories are selectable. Any city/niche can be entered. City suggestions require GeoNames import; no preseeded global business coverage is claimed.
+All 50 US states + DC and 13 Canadian provinces/territories are selectable. Any city/niche can be entered. City suggestions use a bundled, attributed GeoNames reference with indexed server-side pagination. Searchable niches use the full 2022 six-digit NAICS taxonomy plus narrow business-name synonyms; custom cities and niches remain valid. No business coverage is implied by these references.
 
 Administrators can specify an existing **Customer workspace email** on import and host-permission forms to provision that account. Omit it to target your own workspace. This preserves per-account rights and isolation; there is no shared global prospect pool. A customer with no provisioned coverage will get no real results. The public status endpoint exposes only customer service availability; detailed configuration is under authenticated `/api/admin/status`.
 
@@ -86,4 +88,16 @@ Tests use fixtures and an isolated PGlite PostgreSQL engine with real migrations
 - [QA checklist and untested integrations](docs/QA_CHECKLIST.md)
 - [Future modules and remaining work](docs/ROADMAP.md)
 
-The supplied v2 wordmark/icon are copied unchanged to `public/brand/`, while the original root assets remain preserved.
+The approved `leadatlas-icon-v2.png` is the only navigation mark. Optimized copies and derived favicon/app sizes are in `public/brand/`; original uploads are preserved. No wordmark is rendered in navigation.
+
+## Frontend redesign review
+
+The Hallmark custom-brand frontend redesign continues the existing application. See the [recovered handover](docs/HANDOVER_2026_11_04.md), [shared design system](design.md), [redesign and validation report](docs/HALLMARK_REDESIGN.md), [before/after comparison](docs/screenshots/hallmark/compare.html), and [isolated authenticated browser-review setup](tests/visual/README.md). Backend integration and production configuration remain a separate phase.
+
+## Global domain research corrections
+
+Domain Buyer Finder now uses a separate worldwide contract, authorized modular discovery adapters, strict evidence-based domain relationships and the existing verification/suppression/export gates. Keys and explicit use approval are required; no live provider is claimed as validated. See [implementation, limits and release checks](docs/PRODUCT_CORRECTIONS.md), [reference-data provenance](src/lib/reference/SOURCES.md) and the [visual comparison](docs/screenshots/corrections/compare.html). Apply migration `0003_global_discovery_lease` before deploying the paired web/worker changes.
+
+## Frontend storytelling refinement
+
+The eight-item lead-source catalog remains visible when sources are disabled. Availability reflects authorized data in each workspace, and clear selections persist. The homepage retains its four discovery blocks and separate five-row directory, replaces the large tour screenshot with a fictional product-workflow preview, and uses an animated use-case strip until approved reviews exist. See [the refinement report and screenshots](docs/FRONTEND_STORYTELLING_REFINEMENT.md).

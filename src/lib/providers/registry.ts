@@ -12,30 +12,57 @@ export function sourceRegistry(): SourceInfo[] {
     limitations: string,
     key?: string,
     reusable = false,
-  ): SourceInfo => ({
-    id,
-    displayName,
-    docs,
-    licensePolicy,
-    limitations,
-    availability: ["facebook", "instagram", "google"].includes(id)
-      ? "RESTRICTED"
-      : key
-        ? process.env[key]
-          ? "CONFIGURED_UNTESTED"
-          : "MISSING_CREDENTIALS"
-        : reusable
-          ? "READY_FOR_IMPORT"
-          : "NOT_CONNECTED",
-    permittedPersistenceFields: reusable
-      ? ["name", "location", "website", "email", "evidence"]
-      : [],
-    permittedExportFields: reusable ? ["name", "email"] : [],
-    requiresKey: !!key,
-    rawRetention:
-      "No raw API payload retention; normalized licensed fields and evidence only",
-    batchLimit: 50,
-  });
+  ): SourceInfo => {
+    const importSource = [
+      "overture",
+      "imports",
+      "directories",
+      "canada",
+    ].includes(id);
+    const socialOnly = ["facebook", "instagram"].includes(id);
+    return {
+      id,
+      displayName,
+      docs,
+      licensePolicy,
+      limitations,
+      availability: ["facebook", "instagram", "google"].includes(id)
+        ? "RESTRICTED"
+        : key
+          ? process.env[key]
+            ? "CONFIGURED_UNTESTED"
+            : "MISSING_CREDENTIALS"
+          : reusable
+            ? "READY_FOR_IMPORT"
+            : "NOT_CONNECTED",
+      permittedPersistenceFields: reusable
+        ? ["name", "location", "website", "email", "evidence"]
+        : [],
+      permittedExportFields: reusable ? ["name", "email"] : [],
+      requiresKey: !!key,
+      rawRetention:
+        "No raw API payload retention; normalized licensed fields and evidence only",
+      batchLimit: 50,
+      capabilities: {
+        businessDiscovery: importSource,
+        websiteDiscovery: importSource || id === "website",
+        socialOnlyDiscovery: socialOnly,
+        publishedBusinessEmail: ["imports", "directories", "canada"].includes(
+          id,
+        ),
+        locationSearch: importSource,
+        businessTypeSearch: importSource,
+      },
+      supportedLocations: importSource ? ["US", "CA"] : [],
+      requiredCredentials: key ? [key] : [],
+      rateLimitPolicy: importSource
+        ? "Bounded local queries; administrator ingestion limits apply"
+        : "Provider-specific limits apply; live discovery adapter is not connected",
+      pricingConstraint: importSource
+        ? "No per-query provider charge; imported dataset licence terms apply"
+        : "Provider plan and usage charges must be reviewed before activation",
+    };
+  };
   return [
     source(
       "facebook",
@@ -62,6 +89,20 @@ export function sourceRegistry(): SourceInfo[] {
       "GOOGLE_PLACES_API_KEY",
     ),
     source(
+      "bing",
+      "Bing Search",
+      "https://dataforseo.com/apis/serp-api",
+      "Licensed SERP provider terms and operator approval required",
+      "Bing organic results are not Bing Maps and do not provide email or export rights.",
+    ),
+    source(
+      "google_search",
+      "Google Search",
+      "https://developers.google.com/custom-search/v1/overview",
+      "Approved search API terms required",
+      "No local business records or email extraction path is connected.",
+    ),
+    source(
       "overture",
       "Overture Maps Places",
       "https://docs.overturemaps.org/guides/places/",
@@ -79,6 +120,21 @@ export function sourceRegistry(): SourceInfo[] {
       "BRAVE_SEARCH_API_KEY",
     ),
     source(
+      "dataforseo",
+      "DataForSEO licensed SERP discovery",
+      "https://docs.dataforseo.com/v3/serp/google/organic/live/advanced/",
+      "Operator must review discovery use; SERP access grants no underlying contact reuse rights",
+      "Transient URLs only. Multi-country query locales required; first-party identity and permission review remain mandatory.",
+      "DATAFORSEO_LOGIN",
+    ),
+    source(
+      "commoncrawl",
+      "Common Crawl URL index",
+      "https://index.commoncrawl.org/",
+      "Index access is not a licence to reuse the indexed website content",
+      "Explicit approval and pinned archive required. Historic URL hints only; no activity or contact verification.",
+    ),
+    source(
       "website",
       "Permitted business websites",
       "/terms",
@@ -93,6 +149,15 @@ export function sourceRegistry(): SourceInfo[] {
       "/admin/sources",
       "Administrator confirms provenance and storage/export rights for each batch",
       "No blanket rights to chambers, directories or trade associations.",
+      undefined,
+      true,
+    ),
+    source(
+      "directories",
+      "Authorized directories & chamber listings",
+      "/admin/sources",
+      "Administrator must attest to each feed's reuse and export rights",
+      "Feed-specific import only; no directory scraping or blanket permission.",
       undefined,
       true,
     ),
@@ -134,6 +199,10 @@ export function importedAdapter(
       input: SearchInput,
       context: { ownerId: string; jobId: string },
     ) {
+      if (!input.country || !input.region || !input.city || !input.niche)
+        throw new Error(
+          "Regional adapter requires an explicit location and niche",
+        );
       const filters = [
         eq(businesses.ownerId, context.ownerId),
         eq(businesses.source, id),

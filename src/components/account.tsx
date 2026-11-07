@@ -30,7 +30,6 @@ export function Account() {
   return (
     <div className="stack">
       <div>
-        <div className="eyebrow">Your account</div>
         <h1>Account & privacy</h1>
         <p>Manage access and business-contact data responsibly.</p>
       </div>
@@ -38,63 +37,68 @@ export function Account() {
       {message && <div className="notice">{message}</div>}
       {data?.user ? (
         <>
-          <div className="card account-info">
-            <h3>{data.user.name}</h3>
-            <p>{data.user.email}</p>
-            <p className="small">
-              {data.isAdmin && (
-                <>
-                  Account ID: <code>{data.user.id}</code>
-                  <br />
-                </>
-              )}
-              Role: {data.isAdmin ? "Source administrator" : "Workspace user"}
-              <br />
-              Email ownership:{" "}
-              {data.user.emailVerified
-                ? "Verified"
-                : "Not yet verified. Request a verification link from the sign-in page."}
-            </p>
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                await authClient.signOut();
-                router.push("/sign-in");
-              }}
-            >
-              Sign out
-            </Button>
-          </div>
-          <div className="card">
-            <h3>Data controls</h3>
-            <p className="small">
-              Reports and opt-outs immediately suppress affected leads from
-              subsequent exports. Account deletion removes your searches,
-              sessions, imported records, saved leads and audit history.
-              Previously downloaded files are outside LeadAtlas storage.
-            </p>
-            <p className="small">
-              <Link className="link" href="/forgot-password">
-                Reset your password
-              </Link>{" "}
-              using a secure email link.
-            </p>
-            <Link className="link" href="/privacy">
-              Read the privacy policy
-            </Link>
-            <hr className="divider" />
-            <form className="stack" onSubmit={remove}>
-              <label>
-                Type DELETE MY ACCOUNT to permanently remove your data
-                <input
-                  name="confirmation"
-                  required
-                  pattern="DELETE MY ACCOUNT"
-                />
-              </label>
-              <Button variant="danger">Delete my account and data</Button>
-            </form>
-          </div>
+          <section className="account-section account-info">
+            <h2>Profile</h2>
+            <div>
+              <h3>{data.user.name}</h3>
+              <p>{data.user.email}</p>
+              <p className="small">
+                {data.isAdmin && (
+                  <>
+                    Account ID: <code>{data.user.id}</code>
+                    <br />
+                  </>
+                )}
+                Role: {data.isAdmin ? "Source administrator" : "Workspace user"}
+                <br />
+                Email ownership:{" "}
+                {data.user.emailVerified
+                  ? "Verified"
+                  : "Not yet verified. Request a verification link from the sign-in page."}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  await authClient.signOut();
+                  router.push("/sign-in");
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          </section>
+          <section className="account-section">
+            <h2>Data controls</h2>
+            <div>
+              <p className="small">
+                Reports and opt-outs immediately suppress affected leads from
+                subsequent exports. Account deletion removes your searches,
+                sessions, imported records, saved leads and audit history.
+                Previously downloaded files are outside LeadAtlas storage.
+              </p>
+              <p className="small">
+                <Link className="link" href="/forgot-password">
+                  Reset your password
+                </Link>{" "}
+                using a secure email link.
+              </p>
+              <Link className="link" href="/privacy">
+                Read the privacy policy
+              </Link>
+              <hr className="divider" />
+              <form className="stack" onSubmit={remove}>
+                <label>
+                  Type DELETE MY ACCOUNT to permanently remove your data
+                  <input
+                    name="confirmation"
+                    required
+                    pattern="DELETE MY ACCOUNT"
+                  />
+                </label>
+                <Button variant="danger">Delete my account and data</Button>
+              </form>
+            </div>
+          </section>
         </>
       ) : (
         <div className="card">

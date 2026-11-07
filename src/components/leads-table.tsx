@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { SearchX, X, Copy, Bookmark, SearchCheck } from "lucide-react";
 import { api, Badge, Button, ErrorNotice } from "./ui";
+import { domainMatchStatus } from "@/lib/core/domain";
 import type { BusinessRecord, Product } from "@/lib/core/types";
 type ManagedRecord = BusinessRecord & { tags?: string[]; notes?: string };
 export function LeadsTable({
@@ -15,6 +16,7 @@ export function LeadsTable({
   refresh?: () => void;
 }) {
   const [selected, setSelected] = useState<ManagedRecord | null>(null);
+  const inspectTrigger = useRef<HTMLButtonElement | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   async function action(
@@ -48,25 +50,45 @@ export function LeadsTable({
   }
   return (
     <>
-      <ErrorNotice message={error} />
-      {message && (
+      {!selected && <ErrorNotice message={error} />}
+      {!selected && message && (
         <div className="notice success" role="status">
           {message}
         </div>
       )}
       <div
-        className="table-wrap"
+        className={
+          product === "domains" ? "table-wrap domain-table-wrap" : "table-wrap"
+        }
         tabIndex={0}
         role="region"
-        aria-label="Business contacts table"
+        aria-label={
+          product === "domains"
+            ? "Domain buyer research table"
+            : "Business contacts table"
+        }
       >
         {records.length ? (
-          <table>
+          <table
+            className={
+              product === "domains" ? "domain-table" : "contacts-table"
+            }
+            role="table"
+          >
             <thead>
               <tr>
                 <th>Business name</th>
+                <th>Discovery source</th>
+                {product === "domains" && (
+                  <>
+                    <th>Current website</th>
+                    <th>Domain relationship</th>
+                    <th>Website / business</th>
+                  </>
+                )}
                 <th>Public business email</th>
                 <th>Qualification</th>
+                {product === "domains" && <th>Last checked</th>}
                 <th>Evidence</th>
                 <th>
                   <span className="sr-only">Save</span>
@@ -79,10 +101,55 @@ export function LeadsTable({
                   <td>
                     <strong>{r.name}</strong>
                     <div className="muted small">
-                      {r.city}, {r.region} · {r.niche}
+                      {[r.city, r.region, r.country, r.niche]
+                        .filter(Boolean)
+                        .join(" / ") || "Location not established"}
                     </div>
                     {r.fixture && <Badge value="DEMO FIXTURE" />}
                   </td>
+                  <td data-label="Discovery source">
+                    {[...new Set(r.discoveredBy ?? [r.source])].map(
+                      (source) => (
+                        <Badge key={source} value={source} />
+                      ),
+                    )}
+                  </td>
+                  {product === "domains" && (
+                    <>
+                      <td>
+                        {r.websites[0] ? (
+                          <a
+                            className="link"
+                            href={r.websites[0]}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {new URL(r.websites[0]).hostname}
+                          </a>
+                        ) : (
+                          "Not established"
+                        )}
+                      </td>
+                      <td>
+                        <Badge value={domainMatchStatus(r)} />
+                        <p className="small domain-match-reason">
+                          {r.domainMatch?.reasons[0] ??
+                            "No supported domain relationship"}
+                        </p>
+                        <span className="small muted">
+                          {r.domainMatch?.domain}
+                        </span>
+                      </td>
+                      <td>
+                        <Badge value={r.website?.status ?? "UNKNOWN"} />
+                        <div className="small muted">
+                          {r.quality?.activity
+                            ?.replaceAll("_", " ")
+                            .toLowerCase() ?? "Activity unknown"}
+                        </div>
+                      </td>
+                    </>
+                  )}
                   <td>
                     {r.contacts[0] ? (
                       <>
@@ -111,8 +178,23 @@ export function LeadsTable({
                       value={r.quality?.status ?? "PENDING_VERIFICATION"}
                     />
                   </td>
+                  {product === "domains" && (
+                    <td>
+                      {r.website?.checkedAt
+                        ? new Date(r.website.checkedAt).toLocaleDateString()
+                        : "Not checked"}
+                    </td>
+                  )}
                   <td>
-                    <Button variant="text" onClick={() => setSelected(r)}>
+                    <Button
+                      variant="text"
+                      onClick={(event) => {
+                        inspectTrigger.current = event.currentTarget;
+                        setMessage("");
+                        setError("");
+                        setSelected(r);
+                      }}
+                    >
                       <SearchCheck size={14} />
                       Inspect
                     </Button>
@@ -175,11 +257,15 @@ export function LeadsTable({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="drawer">
+          <Dialog.Content
+            className="drawer"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              inspectTrigger.current?.focus({ preventScroll: true });
+            }}
+          >
             <div className="row between">
-              <div className="eyebrow" style={{ margin: 0 }}>
-                Evidence inspection
-              </div>
+              <span className="small muted">Evidence inspection</span>
               <Dialog.Close asChild>
                 <Button variant="text" aria-label="Close evidence">
                   <X size={22} />
@@ -193,6 +279,12 @@ export function LeadsTable({
               Evidence-backed research. Unknown checks remain visible and are
               excluded from qualified exports.
             </Dialog.Description>
+            <ErrorNotice message={error} />
+            {message && (
+              <div className="notice success" role="status">
+                {message}
+              </div>
+            )}
             {selected && (
               <>
                 <Badge
@@ -249,7 +341,7 @@ export function LeadsTable({
                         <p className="small" style={{ margin: "8px 0" }}>
                           Found {c.foundAt}
                           <br />
-                          {c.verification?.provider ?? "No verifier"} ·{" "}
+                          {c.verification?.provider ?? "No verifier"}:{" "}
                           {c.verification?.nativeStatus ?? "not_verified"}
                           <br />
                           Verified {c.verification?.checkedAt ?? "Never"}
@@ -263,6 +355,8 @@ export function LeadsTable({
                     <>
                       <dt>Domain association</dt>
                       <dd>
+                        <Badge value={domainMatchStatus(selected)} />
+                        <p>Researched domain: {selected.domainMatch.domain}</p>
                         <Badge value={selected.domainMatch.tier} />
                         <p className="small">
                           {selected.domainMatch.reasons.join(". ")}
@@ -281,7 +375,7 @@ export function LeadsTable({
                     {Object.entries(selected.fieldRights).map(
                       ([field, right]) => (
                         <div className="evidence" key={field}>
-                          <strong>{field}</strong> ·{" "}
+                          <strong>{field}</strong>:{" "}
                           {right.export
                             ? "Export permitted"
                             : "Export restricted"}
@@ -305,7 +399,7 @@ export function LeadsTable({
                         <p className="small" style={{ margin: "7px 0" }}>
                           {e.detail}
                           <br />
-                          {e.observedAt} · {e.source}
+                          {e.observedAt}, {e.source}
                         </p>
                         <a href={e.url} target="_blank" rel="noreferrer">
                           {e.url}

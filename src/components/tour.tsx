@@ -34,7 +34,7 @@ const steps = [
     items: [
       "Public source: example.com/contact",
       "Fictional email: hello@example.com",
-      "Sample only — no verification performed",
+      "Sample only, no verification performed",
     ],
   },
   {
@@ -58,7 +58,9 @@ export function Tour() {
       <main id="main-content" className="landing-main">
         <div className="tour-layout">
           <div>
-            <div className="eyebrow">Sample tour · Step {step + 1} of 4</div>
+            <p className="tour-step" role="status">
+              Sample tour, step {step + 1} of 4
+            </p>
             <h1>{current.title}</h1>
             <p>{current.text}</p>
             <div className="tour-progress" aria-hidden="true">
@@ -85,9 +87,9 @@ export function Tour() {
               )}
             </div>
           </div>
-          <div className="card" aria-live="polite">
-            <span className="badge">SYNTHETIC SAMPLE · NO LIVE LEADS</span>
-            <h2 style={{ marginTop: 23 }}>{current.action}</h2>
+          <div className="tour-sample" aria-live="polite">
+            <h2>{current.action}</h2>
+            <p className="small">Synthetic sample, no live leads</p>
             {current.items.map((item) => (
               <div className="evidence row" key={item}>
                 <Check size={16} />

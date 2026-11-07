@@ -71,7 +71,7 @@ export type BusinessRecord = {
   source: string;
   sourceId: string;
   name: string;
-  country: "US" | "CA";
+  country: string;
   region: string;
   city: string;
   niche: string;
@@ -95,6 +95,7 @@ export type BusinessRecord = {
   registryId?: string;
   fixture?: boolean;
   suppressed?: boolean;
+  researchScope?: "global";
   domainMatch?: {
     domain: string;
     tier: string;
@@ -102,19 +103,23 @@ export type BusinessRecord = {
     rank: number;
     ambiguous: boolean;
   };
+  discoveredBy?: string[];
 };
 export type SearchInput = {
   product: Product;
-  country: "US" | "CA";
-  region: string;
-  city: string;
-  niche: string;
+  scope?: "global";
+  country?: "US" | "CA";
+  region?: string;
+  city?: string;
+  niche?: string;
+  categoryId?: string;
   sources: string[];
   limit: number;
   queryBudget: number;
   domain?: string;
   domains?: string[];
-  domainKind?: "brandable" | "personal" | "exact";
+  domainKind?: "auto" | "brandable" | "personal" | "exact";
+  filters?: { country?: string; industry?: string };
   ownershipAffirmed?: boolean;
   professionalContext?: string;
   since?: string;
@@ -138,6 +143,18 @@ export type SourceInfo = {
   limitations: string;
   rawRetention: string;
   batchLimit: number;
+  capabilities: {
+    businessDiscovery: boolean;
+    websiteDiscovery: boolean;
+    socialOnlyDiscovery: boolean;
+    publishedBusinessEmail: boolean;
+    locationSearch: boolean;
+    businessTypeSearch: boolean;
+  };
+  supportedLocations: string[];
+  requiredCredentials: string[];
+  rateLimitPolicy: string;
+  pricingConstraint: string;
 };
 export interface LeadSourceAdapter extends SourceInfo {
   search(

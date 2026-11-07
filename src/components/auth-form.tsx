@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowLeft } from "lucide-react";
 import { authClient } from "./account";
 import { Brand } from "./navigation";
 import { ThemeSwitcher } from "./theme";
@@ -122,36 +122,8 @@ export function AuthForm({
         <ThemeSwitcher />
       </div>
       <div className="auth-layout">
-        <aside className="auth-intro">
-          <div className="eyebrow">Your next opportunity</div>
-          <h2>
-            Better research.
-            <br />
-            <span>More meaningful connections.</span>
-          </h2>
-          <p>
-            Find your focus, understand the evidence, and build a shortlist with
-            confidence.
-          </p>
-          <div className="auth-promise">
-            <ShieldCheck size={23} />
-            <span>
-              Quality leads.
-              <br />
-              Clearer opportunities.
-            </span>
-          </div>
-          <Link className="text-link" href="/tour">
-            Explore the sample tour <ArrowRight size={17} />
-          </Link>
-        </aside>
         <div className="card auth-card stack">
           <div>
-            <div className="eyebrow">
-              {mode === "forgot" || mode === "reset"
-                ? "Account recovery"
-                : "Welcome to LeadAtlas"}
-            </div>
             <h1>
               {mode === "signup"
                 ? "Create your workspace"
@@ -161,13 +133,13 @@ export function AuthForm({
                     ? "Choose a new password"
                     : "Welcome back"}
             </h1>
-            <p>
-              {mode === "forgot"
-                ? "Enter your email to request a secure reset link."
-                : mode === "reset"
-                  ? "Use a unique password to protect your research."
-                  : "Your research and saved leads, all in one place."}
-            </p>
+            {(mode === "forgot" || mode === "reset") && (
+              <p>
+                {mode === "forgot"
+                  ? "Enter your email to request a secure reset link."
+                  : "Use a unique password to protect your research."}
+              </p>
+            )}
           </div>
           <ErrorNotice message={error} />
           {(statusError || (data && !available)) && (
@@ -332,9 +304,14 @@ export function AuthForm({
           </p>
         </div>
       </div>
-      <Link className="auth-home" href="/">
-        ← Back to LeadAtlas
-      </Link>
+      <footer className="auth-footer">
+        <Link className="auth-home" href="/">
+          <ArrowLeft size={15} aria-hidden="true" /> Back to LeadAtlas
+        </Link>
+        <Link className="text-link" href="/tour">
+          Explore the sample tour
+        </Link>
+      </footer>
     </main>
   );
 }

@@ -1,0 +1,2 @@
+sloplint: clean. 0 FAIL, 0 REFLEX, 0 WARN across 6 file(s).
+before: recorded 16 links, 0 fields, 2 handlers, 0 test hooks, 0 script hooks in .hallmark/before.json; --kept checks a redesign against it

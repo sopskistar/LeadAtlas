@@ -1,0 +1,26 @@
+{
+  "scanned": "2026-11-04",
+  "mode": "product corrections / custom brand refinement",
+  "branch": "feature/global-domain-discovery",
+  "findings": {
+    "system": "Locked custom system in design.md; Albert Sans and blue/navy/white tokens in src/app/tokens.css:1",
+    "branding": "Approved root leadatlas-icon-v2.png; shared Brand in src/components/navigation.tsx:10",
+    "homepage": "src/app/page.tsx:1; preserve headline, render four requested independent paths",
+    "forms": "src/components/search-form.tsx:1; local searchable selectors and separate worldwide domain contract",
+    "results": "src/components/leads-table.tsx:1; preserve dense table, inspect/save/export actions"
+  },
+  "preserve": [
+    "All existing routes and product IDs",
+    "Auth/tenant boundaries and source rights",
+    "Verification freshness, suppression, qualified CSV rules",
+    "Original uploads and previous committed redesign"
+  ],
+  "introduce": [
+    "Icon-only navigation and derived app icons",
+    "Four ordered discovery links",
+    "Sourced server-side geography and niche suggestions",
+    "Global candidate discovery and deterministic association matching",
+    "Durable discovery lease; additive migration only"
+  ],
+  "delete": []
+}

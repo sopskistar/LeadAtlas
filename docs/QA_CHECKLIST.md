@@ -72,7 +72,7 @@ These are genuine licensed discovery samples, **not independently verified busin
 ## Product/operational acceptance still open
 
 - Resend verification/password-reset integration is now implemented; real credentials, sender verification and live delivery still require operator validation. Operator-specific legal identity/privacy contact remains missing. Complete these before public signup/paid launch.
-- No automatic Hunter 202 polling, global buyer discovery, full Canada bulk/API format support, 50-state registry feeds or automatic export-time refresh. Current bounded imported matching and conservative unverified outcomes are explicit.
+- No automatic Hunter 202 polling, live-accepted global buyer discovery, full Canada bulk/API format support, 50-state registry feeds or automatic export-time refresh. Current bounded imported matching and conservative unverified outcomes are explicit.
 - No monetary billing/credits, invoice-cost metrics, calibration/false-positive truth study or measured real-world bounce rate. Query budgets and run counts are real; money/accuracy figures are not invented.
 - No automated object-storage provisioning/upload/retention, scheduled coverage expansion, full headless website-function/malware analysis or production load/security audit.
 - Run `npm run cleanup` under a controlled scheduler and verify backups/restore and privacy deletion operations before production.
@@ -80,3 +80,25 @@ These are genuine licensed discovery samples, **not independently verified busin
 ## Human beta plan
 
 Use a small reviewer-approved US and Canadian cohort. Independently check identity, trading activity, exact contact association, site category and source rights before accepting a qualified claim. Review closed/broken/social-only/catch-all/ambiguous examples deliberately. Ask users to flag wrong business, wrong email, bounce, closure and opt-out in the evidence drawer; verify immediate exclusion on re-export. Record reviewer truth and authorized sending feedback separately; report false-positive and bounce rates only after actual observations. Never send test emails to strangers to measure deliverability.
+
+## Hallmark frontend redesign, 2026-11-04
+
+Continued clean `5e22388` on `frontend/hallmark-redesign`, with no backend/migration/provider changes. Lint, strict TypeScript, production build and all **131 unit/integration tests** passed. **30 public browser tests** passed in a final fresh-server CI-mode run; **8 authenticated production browser tests** passed using actual Better Auth, migrated isolated PostgreSQL and nonexportable test fixtures. Additional screenshot/focus capture checks passed. All **68 automated route/theme/device accessibility analyses** passed. Live services remain untested.
+
+Hallmark rendered the initial nine routes, the final public routes and six protected routes. The final audit has **0 Floor failures and 0 open Reflex findings**. One preserved-content notice reflects the explicitly requested copy reduction; the shared-stylesheet Finish finding is answered. Desktop/mobile images, evidence views, the full audit method, execution caveats and remaining limits are in the [redesign report](HALLMARK_REDESIGN.md) and [standalone comparison](screenshots/hallmark/compare.html).
+
+No production push/deployment was performed. This is frontend review work, not a claim that missing live integrations are ready.
+
+## Product corrections release — 2026-11-04
+
+Lint, TypeScript, production build and all 159 unit/integration tests passed. Public browser coverage completed 38 cases with one initial timing retry; the unchanged geography test subsequently passed twice with retries disabled. All 10 authenticated desktop/mobile tests passed. Hallmark rendered checks report 0 Floor failures, 0 Reflex findings and 0 warnings. The new mobile domain table is independently checked at all eight widths, including actual Inspect interaction and evidence focus return. See [the implementation and execution record](PRODUCT_CORRECTIONS.md) and [before/after screenshots](screenshots/corrections/compare.html). Live integrations and production rollout remain separate acceptance work.
+
+## Final homepage corrections — 2026-11-05
+
+Lint, TypeScript, production build and **177 unit/integration tests in 15 files** passed. The final public production run passed 48 of 50 cases; the two new action-page cases had an ambiguous alert locator, corrected by scoping it to the form. Both then passed with retries disabled, with no application change or weakened expectation. All **12 authenticated desktop/mobile cases** passed using isolated migrated PostgreSQL and actual sessions. Fixtures are explicitly synthetic and no approved review is published. Hallmark reports **0 FAIL / 0 REFLEX / 0 WARN**, retaining **16/16 links and 2/2 handlers** in the reconstructed source inventory. Layout checks cover eight widths, with actual light/dark desktop, tablet and mobile screenshots.
+
+See [the complete execution record and blockers](FINAL_FRONTEND_CORRECTIONS.md) and [visual comparison](screenshots/final-homepage/compare.html). Run migration **0004**, configure the updates sender/secret, and validate authorized-inbox confirmation/unsubscribe before claiming operational signup. Existing discovery, auth, quality, source-rights and tenant controls remain intact. Real testimonials, live inbox acceptance, Safari/VoiceOver and production integrations remain untested or unavailable. [Phase B](LEAD_DISCOVERY_NEXT_PHASE.md) is research only and requires frontend approval before implementation.
+
+## Frontend storytelling refinement — 2026-11-06
+
+The source selector keeps all eight channels visible, reports actual available/disabled states, persists an empty selection, and enables imported sources only when the workspace has permitted records. The homepage retains four discovery blocks and the separate five-row directory. A four-stage product preview replaces the tour screenshot, and public moving cards fall back to use cases until approved reviews exist. See [the focused report and screenshots](FRONTEND_STORYTELLING_REFINEMENT.md). Provider credentials and review approval remain external requirements.

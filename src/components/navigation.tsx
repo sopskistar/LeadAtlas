@@ -3,11 +3,17 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Menu, X, ArrowUpRight } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ThemeSwitcher } from "./theme";
 import { features } from "./catalog";
 
-export function Brand({ compact = false }: { compact?: boolean }) {
+export function Brand({
+  compact = false,
+  tagline = false,
+}: {
+  compact?: boolean;
+  tagline?: boolean;
+}) {
   return (
     <Link
       className={`brand ${compact ? "compact-brand" : ""}`}
@@ -16,12 +22,19 @@ export function Brand({ compact = false }: { compact?: boolean }) {
     >
       <Image
         className="logo"
-        src="/brand/leadatlas-wordmark.png"
-        width={202}
-        height={72}
-        alt="LeadAtlas"
+        src="/brand/leadatlas-icon-v2.png"
+        width={64}
+        height={64}
+        alt=""
         priority
       />
+      {tagline && (
+        <span className="brand-tagline">
+          Better leads.
+          <br />
+          Less guesswork.
+        </span>
+      )}
     </Link>
   );
 }
@@ -45,7 +58,7 @@ export function MobileMenu({
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="mobile-menu">
           <div className="row between">
-            <Brand />
+            <Brand tagline />
             <Dialog.Close className="icon-button" aria-label="Close menu">
               <X size={22} />
             </Dialog.Close>
@@ -70,9 +83,9 @@ export function MobileMenu({
 export function PublicHeader() {
   return (
     <header className="landing-nav">
-      <Brand />
+      <Brand tagline />
       <nav className="public-links" aria-label="Main navigation">
-        <Link href="/#features">Features</Link>
+        <Link href="/#features">Finders</Link>
         <Link href="/#how-it-works">How it works</Link>
         <Link href="/#who-its-for">Who it’s for</Link>
       </nav>
@@ -82,11 +95,11 @@ export function PublicHeader() {
           Sign in
         </Link>
         <Link className="button desktop-cta" href="/sign-up">
-          Get started <ArrowUpRight size={16} />
+          Get started
         </Link>
         <MobileMenu>
           <nav aria-label="Mobile navigation" className="mobile-links">
-            <Link href="/#features">Features</Link>
+            <Link href="/#features">Finders</Link>
             <Link href="/#how-it-works">How it works</Link>
             <Link href="/#who-its-for">Who it’s for</Link>
             <hr className="divider" />

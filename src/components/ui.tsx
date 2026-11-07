@@ -43,7 +43,10 @@ export function Badge({ value }: { value: string }) {
               : "",
       )}
     >
-      {value.replaceAll("_", " ")}
+      {value
+        .toLowerCase()
+        .replaceAll("_", " ")
+        .replace(/^./, (c) => c.toUpperCase())}
     </span>
   );
 }
@@ -102,7 +105,7 @@ export function ErrorNotice({ message }: { message?: string }) {
 }
 export function Loading() {
   return (
-    <div className="card" role="status" aria-label="Loading">
+    <div className="loading-region" role="status" aria-label="Loading">
       <div className="skeleton" />
       <div className="skeleton" style={{ width: "65%" }} />
       <span className="small muted">Loading your workspace…</span>

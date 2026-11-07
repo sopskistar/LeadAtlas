@@ -39,35 +39,38 @@ test("public, search and account screens pass automated WCAG checks in both them
   }
 });
 
-test("homepage explains all five features and uses real brand assets", async ({
+test("homepage presents four independent discovery features and the approved icon", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Better Leads.Better Opportunities.",
+    "Find businesses worth contacting.",
   );
-  const logo = page
-    .getByRole("img", { name: "LeadAtlas", exact: true })
+  const homeLink = page
+    .getByRole("link", { name: "LeadAtlas home", exact: true })
     .first();
+  const logo = homeLink.locator("img");
   await expect(logo).toBeVisible();
+  expect(await logo.getAttribute("src")).toContain("leadatlas-icon-v2");
+  await expect(homeLink).toContainText("Better leads.Less guesswork.");
   expect(
     await logo.evaluate((image: HTMLImageElement) => image.naturalWidth),
   ).toBeGreaterThan(0);
-  for (const [, title] of [
-    ...finders,
-    ["/leads", "Lead Management & Export"],
-  ]) {
+  for (const [, title] of finders)
     await expect(
       page
         .locator("#features")
         .getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
-  }
+  await expect(page.locator("#features h2")).toHaveCount(4);
+  await expect(page.locator(".workflow-preview-topline")).toContainText(
+    "Illustrative preview",
+  );
+  await expect(page.locator(".workflow-record-values strong")).toContainText(
+    "Cedarline Plumbing",
+  );
   await expect(
-    page.getByText("Illustrative preview", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Fictional business · Sample only", { exact: true }),
+    page.getByText("Sample record only. No live search or verification is shown."),
   ).toBeVisible();
   await expect(
     page.getByText("Sources & coverage", { exact: true }),
@@ -96,7 +99,9 @@ test("all four finders preserve their routes and honest unavailable states", asy
     );
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
       ),
     ).toBe(true);
   }
@@ -106,16 +111,25 @@ test("country selection retains every US and Canadian region", async ({
   page,
 }) => {
   await page.goto("/business-contacts");
+  await page.getByRole("combobox", { name: "State", exact: true }).click();
   await expect(
     page
-      .getByRole("combobox", { name: "State", exact: true })
-      .locator("option"),
+      .getByRole("listbox", { name: "State suggestions", exact: true })
+      .getByRole("option"),
   ).toHaveCount(51);
-  await page.getByLabel("Country", { exact: true }).selectOption("CA");
+  await page.getByLabel("Country", { exact: true }).fill("Canada");
+  await page.getByLabel("Country", { exact: true }).press("ArrowDown");
+  await page.getByLabel("Country", { exact: true }).press("Enter");
+  await page
+    .getByRole("combobox", { name: "Province / territory", exact: true })
+    .click();
   await expect(
     page
-      .getByRole("combobox", { name: "Province / territory", exact: true })
-      .locator("option"),
+      .getByRole("listbox", {
+        name: "Province / territory suggestions",
+        exact: true,
+      })
+      .getByRole("option"),
   ).toHaveCount(13);
   await page.getByLabel("City", { exact: true }).fill("Toronto");
   await page
@@ -349,7 +363,7 @@ test("zero-setup tour is clearly synthetic and has no export action", async ({
 }) => {
   await page.goto("/tour");
   await expect(
-    page.getByText("SYNTHETIC SAMPLE · NO LIVE LEADS", { exact: true }),
+    page.getByText("Synthetic sample, no live leads", { exact: true }),
   ).toBeVisible();
   for (let i = 0; i < 3; i++)
     await page.getByRole("button", { name: "Next step", exact: true }).click();
@@ -391,7 +405,9 @@ test("responsive pages render without overflow, browser errors or hydration warn
       await expect(page.locator("h1")).toBeVisible();
       expect(
         await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
         ),
         `${path} at ${width}px`,
       ).toBe(true);
@@ -413,7 +429,7 @@ test("responsive pages render without overflow, browser errors or hydration warn
           .first()
           .selectOption(theme);
         await page.screenshot({
-          path: `test-results/after-${info.project.name}-${path.replaceAll("/", "") || "home"}-${width}-${theme}.png`,
+          path: `.hallmark/validation/after-${info.project.name}-${path.replaceAll("/", "") || "home"}-${width}-${theme}.png`,
           fullPage: true,
         });
       }
@@ -427,7 +443,9 @@ test("responsive pages render without overflow, browser errors or hydration warn
   });
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
     ),
   ).toBe(true);
   await expect(

@@ -1,17 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, or, lt, isNull, sql, count } from "drizzle-orm";
+import { and, eq, or, lt, isNull, sql, count, inArray } from "drizzle-orm";
 import { getDb } from "../lib/db";
 import {
   businesses,
   jobs,
   jobItems,
   jobEvents,
+  sourceRuns,
   sourceConfigs,
   suppressions,
   evidenceLog,
 } from "../lib/db/schema";
 import { importedAdapter } from "../lib/providers/registry";
-import { rankDomainMatches } from "../lib/core/domain";
+import { discoverGlobalBusinesses } from "./global-discovery";
+import { matchDomain, rankDomainMatches } from "../lib/core/domain";
 import { assess } from "../lib/core/quality";
 import { researchWebsite } from "./research";
 import { verifyEmail } from "../lib/providers/email";
@@ -26,7 +28,7 @@ async function loadJob(id: string) {
   if (!job) throw new Error("Job not found");
   return job;
 }
-export async function discover(jobId: string) {
+export async function discover(jobId: string, discoveryToken?: string) {
   const db = getDb();
   const job = await loadJob(jobId);
   if (["CANCELLED", "COMPLETED"].includes(job.status)) return { ids: [] };
@@ -43,22 +45,104 @@ export async function discover(jobId: string) {
     return { ids: old.map((i) => i.businessId) };
   }
   const ids: string[] = [];
-  for (const source of job.input.sources) {
-    const batch = await importedAdapter(
-      source as "overture" | "imports" | "canada",
-    ).search(job.input, { ownerId: job.ownerId, jobId });
-    ids.push(...batch.ids);
-    await db.insert(jobEvents).values({
-      id: randomUUID(),
-      jobId,
-      stage: `SOURCE:${source}`,
-      detail: `${batch.ids.length} matching permitted source records`,
-    });
+  const globalMatches =
+    job.input.product === "domains" && job.input.scope === "global"
+      ? await discoverGlobalBusinesses(
+          jobId,
+          job.ownerId,
+          job.input,
+          discoveryToken,
+        )
+      : null;
+  if (globalMatches) ids.push(...globalMatches.map((r) => r.id));
+  const attribution = new Map<string, Set<string>>();
+  for (const source of globalMatches ? [] : job.input.sources) {
+    const startedAt = new Date();
+    try {
+      const batch = await importedAdapter(
+        source as "overture" | "imports" | "canada",
+      ).search(job.input, { ownerId: job.ownerId, jobId });
+      ids.push(...batch.ids);
+      for (const id of batch.ids) {
+        const sources = attribution.get(id) ?? new Set<string>();
+        sources.add(source);
+        attribution.set(id, sources);
+      }
+      await db
+        .insert(sourceRuns)
+        .values({
+          jobId,
+          source,
+          adapterVersion: "1",
+          status: "COMPLETED",
+          requestCount: 1,
+          discoveredCount: batch.ids.length,
+          uniqueCount: new Set(batch.ids).size,
+          startedAt,
+          completedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [sourceRuns.jobId, sourceRuns.source],
+          set: {
+            status: "COMPLETED",
+            requestCount: 1,
+            discoveredCount: batch.ids.length,
+            uniqueCount: new Set(batch.ids).size,
+            error: null,
+            completedAt: new Date(),
+          },
+        });
+      await db.insert(jobEvents).values({
+        id: randomUUID(),
+        jobId,
+        stage: `SOURCE:${source}`,
+        detail: `${batch.ids.length} matching permitted records; adapter v1`,
+      });
+    } catch {
+      await db
+        .insert(sourceRuns)
+        .values({
+          jobId,
+          source,
+          adapterVersion: "1",
+          status: "FAILED",
+          requestCount: 1,
+          error: "Selected source failed. No other source was substituted.",
+          startedAt,
+          completedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [sourceRuns.jobId, sourceRuns.source],
+          set: {
+            status: "FAILED",
+            requestCount: 1,
+            error: "Selected source failed. No other source was substituted.",
+            completedAt: new Date(),
+          },
+        });
+      await db.insert(jobEvents).values({
+        id: randomUUID(),
+        jobId,
+        stage: `SOURCE_FAILED:${source}`,
+        detail:
+          "Selected discovery source failed; no fallback source was used.",
+      });
+    }
+  }
+  if (!globalMatches && !ids.length && job.input.sources.length) {
+    const runs = await db
+      .select()
+      .from(sourceRuns)
+      .where(eq(sourceRuns.jobId, jobId));
+    if (runs.length && runs.every((run) => run.status === "FAILED"))
+      throw new Error("All selected sources failed");
   }
   const all = [...new Set(ids)];
   let selected = all.slice(0, job.input.limit);
   const matches = new Map<string, BusinessRecord>();
-  if (job.input.product === "domains") {
+  if (globalMatches)
+    for (const record of globalMatches) matches.set(record.id, record);
+  if (job.input.product === "domains" && !globalMatches) {
     const candidates: BusinessRecord[] = [];
     for (const id of all) {
       const [row] = await db
@@ -76,11 +160,48 @@ export async function discover(jobId: string) {
         if (!matches.has(record.id)) matches.set(record.id, record);
     selected = [...matches.keys()].slice(0, job.input.limit);
   }
+  const candidateRows = selected.length
+    ? await db
+        .select({ id: businesses.id, record: businesses.record })
+        .from(businesses)
+        .where(
+          and(
+            eq(businesses.ownerId, job.ownerId),
+            inArray(businesses.id, selected),
+          ),
+        )
+    : [];
+  const candidateRecords = new Map(
+    candidateRows.map((row) => [row.id, row.record]),
+  );
   await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(jobs)
+      .where(eq(jobs.id, jobId))
+      .for("update");
+    if (
+      current.status === "CANCELLED" ||
+      (discoveryToken && current.discoveryLeaseToken !== discoveryToken)
+    )
+      throw new Error("Discovery lease superseded or cancelled");
     for (const id of selected)
       await tx
         .insert(jobItems)
-        .values({ jobId, businessId: id, result: matches.get(id) })
+        .values({
+          jobId,
+          businessId: id,
+          result: {
+            ...(matches.get(id) ?? candidateRecords.get(id)!),
+            domainMatch: matches.get(id)?.domainMatch,
+            discoveredBy: [
+              ...(attribution.get(id) ??
+                [candidateRecords.get(id)?.source].filter(
+                  (v): v is string => !!v,
+                )),
+            ],
+          },
+        })
         .onConflictDoNothing();
     await tx
       .update(jobs)
@@ -97,7 +218,7 @@ export async function discover(jobId: string) {
       id: randomUUID(),
       jobId,
       stage: "DISCOVERY",
-      detail: `${selected.length} permitted candidates; ${ids.length - all.length} duplicates. ${selected.length ? "Verification pending." : "No imported coverage or no targeted match in the selected location."}`,
+      detail: `${selected.length} permitted candidates; ${ids.length - all.length} duplicates. ${selected.length ? "Verification pending." : job.input.scope === "global" ? "No supported domain relationship found in the permitted sources checked." : "No imported coverage or no targeted match in the selected location."}`,
     });
   });
   return { ids: selected };
@@ -151,6 +272,9 @@ export async function processBusiness(jobId: string, businessId: string) {
     if (!row) throw new Error("Business not accessible");
     let record: BusinessRecord = {
       ...row.record,
+      discoveredBy: claimed.result?.discoveredBy ?? [row.record.source],
+      researchScope:
+        job.input.scope === "global" ? "global" : row.record.researchScope,
       domainMatch: claimed.result?.domainMatch,
     };
     const feedback = await db
@@ -268,6 +392,19 @@ export async function processBusiness(jobId: string, businessId: string) {
             ),
           )
       ).length > 0;
+    if (job.input.product === "domains" && record.domainMatch) {
+      const target = record.domainMatch.domain;
+      record.domainMatch = matchDomain(
+        target,
+        {
+          ...record,
+          websites: record.website?.url
+            ? [record.website.url]
+            : record.websites,
+        },
+        job.input.domainKind ?? "auto",
+      );
+    }
     record.quality = assess(record, job.input.product);
     if ((await loadJob(jobId)).status === "CANCELLED") {
       await db

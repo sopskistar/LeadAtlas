@@ -84,6 +84,8 @@ export const jobs = pgTable(
     qualified: integer().notNull().default(0),
     duplicates: integer().notNull().default(0),
     error: text(),
+    discoveryLeaseToken: text("discovery_lease_token"),
+    discoveryLeaseUntil: time("discovery_lease_until"),
     createdAt: time("created_at").notNull().defaultNow(),
     updatedAt: time("updated_at").notNull().defaultNow(),
   },
@@ -220,6 +222,36 @@ export const sourceConfigs = pgTable(
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.source] })],
 );
+export const sourcePreferences = pgTable(
+  "source_preferences",
+  {
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    product: text().notNull(),
+    sources: jsonb().$type<string[]>().notNull().default([]),
+    updatedAt: time("updated_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.product] })],
+);
+export const sourceRuns = pgTable(
+  "job_source_runs",
+  {
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    source: text().notNull(),
+    adapterVersion: text("adapter_version").notNull(),
+    status: text().notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    discoveredCount: integer("discovered_count").notNull().default(0),
+    uniqueCount: integer("unique_count").notNull().default(0),
+    error: text(),
+    startedAt: time("started_at").notNull().defaultNow(),
+    completedAt: time("completed_at"),
+  },
+  (t) => [primaryKey({ columns: [t.jobId, t.source] })],
+);
 export const ingestionBatches = pgTable(
   "ingestion_batches",
   {
@@ -285,4 +317,51 @@ export const rateLimit = pgTable("rate_limits", {
   key: text().notNull().unique(),
   count: integer().notNull(),
   lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
+
+// Homepage engagement is separate from customer prospect records and suppression.
+export const updateSubscriptions = pgTable("update_subscriptions", {
+  id: text().primaryKey(),
+  email: text().notNull().unique(),
+  status: text()
+    .$type<"PENDING" | "ACTIVE" | "UNSUBSCRIBED">()
+    .notNull()
+    .default("PENDING"),
+  consentVersion: text("consent_version").notNull(),
+  requestedAt: time("requested_at").notNull().defaultNow(),
+  confirmedAt: time("confirmed_at"),
+  unsubscribedAt: time("unsubscribed_at"),
+  confirmTokenHash: text("confirm_token_hash").unique(),
+  confirmExpiresAt: time("confirm_expires_at"),
+  confirmationSentAt: time("confirmation_sent_at"),
+});
+export const updateSubscriptionEvents = pgTable("update_subscription_events", {
+  id: text().primaryKey(),
+  subscriptionId: text("subscription_id")
+    .notNull()
+    .references(() => updateSubscriptions.id, { onDelete: "cascade" }),
+  action: text().$type<"REQUESTED" | "CONFIRMED" | "UNSUBSCRIBED">().notNull(),
+  consentVersion: text("consent_version").notNull(),
+  createdAt: time("created_at").notNull().defaultNow(),
+});
+export const testimonials = pgTable("testimonials", {
+  id: text().primaryKey(),
+  displayName: text("display_name").notNull(),
+  roleOrBusiness: text("role_or_business").notNull(),
+  text: text().notNull(),
+  photoPath: text("photo_path"),
+  photoPermission: boolean("photo_permission").notNull().default(false),
+  permissionStatus: text("permission_status")
+    .$type<"PENDING" | "GRANTED" | "REVOKED">()
+    .notNull()
+    .default("PENDING"),
+  permissionEvidence: text("permission_evidence").notNull(),
+  approvalStatus: text("approval_status")
+    .$type<"DRAFT" | "APPROVED">()
+    .notNull()
+    .default("DRAFT"),
+  publishedAt: time("published_at"),
+  approvedAt: time("approved_at"),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: time("updated_at").notNull().defaultNow(),
 });

@@ -22,6 +22,27 @@
       "when": 1793354929111,
       "tag": "0002_huge_malcolm_colcord",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793799664375,
+      "tag": "0003_global_discovery_lease",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793916522664,
+      "tag": "0004_homepage_engagement",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793921925518,
+      "tag": "0005_chilly_amphibian",
+      "breakpoints": true
     }
   ]
 }

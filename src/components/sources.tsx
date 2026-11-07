@@ -27,7 +27,6 @@ export function Sources() {
   return (
     <div className="stack">
       <div className="page-intro">
-        <div className="eyebrow">Provenance & permissions</div>
         <h1>Data sources & operations</h1>
         <p>
           Connection status reflects configuration, permissions and implemented
@@ -39,7 +38,7 @@ export function Sources() {
       <div className="card">
         <div className="row between">
           <h3 style={{ margin: 0 }}>Workspace readiness</h3>
-          <Cable size={20} color="#0866ed" />
+          <Cable size={20} color="var(--blue)" />
         </div>
         <div className="row" style={{ marginTop: 15 }}>
           <Badge
@@ -75,17 +74,14 @@ export function Sources() {
         </p>
         {settings?.usage.map((u) => (
           <span className="badge" key={u.day}>
-            {u.day} · {u.units} reserved work units
+            {u.day}: {u.units} reserved work units
           </span>
         ))}
       </div>
       <div className="source-list">
-        {status?.sources.map((s, i) => (
+        {status?.sources.map((s) => (
           <section className="card source-card" key={s.id}>
             <div>
-              <div className="eyebrow" style={{ marginBottom: 6 }}>
-                {i < 5 ? `Priority channel ${i + 1}` : "Supporting integration"}
-              </div>
               <h3 style={{ margin: 0 }}>{s.displayName}</h3>
             </div>
             <Badge value={s.availability} />
@@ -98,7 +94,7 @@ export function Sources() {
                 <span>
                   Export fields: {s.permittedExportFields.join(", ") || "None"}
                 </span>
-                <span>· Batch limit: {s.batchLimit}</span>
+                <span>Batch limit: {s.batchLimit}</span>
               </div>
               <p className="small">{s.rawRetention}</p>
               <a

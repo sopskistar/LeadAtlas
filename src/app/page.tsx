@@ -1,19 +1,17 @@
+import {
+  CustomerTestimonials,
+  UpdatesSignup,
+} from "@/components/homepage-engagement";
 import Link from "next/link";
 import {
-  ArrowRight,
   ArrowUpRight,
-  Search,
   Globe2,
-  MailCheck,
-  Check,
   Activity,
-  Bookmark,
-  Layers,
-  ScanSearch,
-  Building2,
-  ChevronRight,
+  MailCheck,
+  ShieldCheck,
 } from "lucide-react";
-import { ProductCards } from "@/components/catalog";
+import { ProductCards, products } from "@/components/catalog";
+import { ProductWorkflowPreview } from "@/components/product-workflow-preview";
 import { Brand, PublicHeader } from "@/components/navigation";
 
 export default function Home() {
@@ -22,137 +20,94 @@ export default function Home() {
       <PublicHeader />
       <main id="main-content" className="landing-main">
         <section className="hero">
-          <div className="hero-copy">
-            <div className="eyebrow">
-              <span className="status-dot" /> Quality over quantity
-            </div>
+          <div className="opening-layout">
             <h1>
-              Better Leads.
-              <br />
-              <span>Better Opportunities.</span>
+              Find businesses
+              <br /> worth contacting.
             </h1>
-            <p>
-              Discover relevant businesses, find verified contact information,
-              and connect with prospects that matter. Spend less time chasing
-              outdated emails and more time finding real opportunities.
-            </p>
-            <div className="row hero-actions">
-              <Link className="button" href="/dashboard">
-                Explore LeadAtlas <ArrowRight size={17} />
-              </Link>
-              <a className="button secondary" href="#how-it-works">
-                See how it works <ChevronRight size={17} />
-              </a>
-            </div>
-            <div className="hero-footnote">
-              <span>Built for thoughtful prospecting</span>
-              <span>United States & Canada</span>
+            <div className="hero-description">
+              <p>
+                Research businesses, check contact quality, and build a focused
+                prospect list.
+              </p>
+              <div className="row hero-actions">
+                <Link className="button" href="/dashboard">
+                  Explore LeadAtlas
+                </Link>
+                <a className="text-link" href="#how-it-works">
+                  See how it works
+                </a>
+              </div>
             </div>
           </div>
-          <ProductPreview />
         </section>
-        <section id="features" className="product-section section-anchor">
+        <section
+          id="features"
+          className="discovery-grid section-anchor"
+          aria-label="Business discovery"
+        >
+          {products.map((product) => (
+            <Link
+              className="discovery-link"
+              href={product.path}
+              key={product.id}
+            >
+              <div>
+                <h2>{product.title}</h2>
+                <p>{product.discoveryDescription}</p>
+              </div>
+              <ArrowUpRight size={20} aria-hidden="true" />
+            </Link>
+          ))}
+        </section>
+        <section
+          id="feature-directory"
+          className="product-section section-anchor"
+          aria-labelledby="prospect-heading"
+        >
           <div className="section-intro">
-            <div>
-              <div className="eyebrow">Five main features</div>
-              <h2>A clearer path to your next opportunity.</h2>
-            </div>
-            <p>
-              Find the businesses that fit your goals.
-              <br />
-              Keep the research that earns its place.
-            </p>
+            <h2 id="prospect-heading">Find your next prospect.</h2>
           </div>
           <ProductCards />
         </section>
-        <section id="how-it-works" className="workflow-section section-anchor">
-          <div className="eyebrow">From search to shortlist</div>
-          <h2>Good research. A simple workflow.</h2>
-          <div className="workflow-grid">
-            {[
-              [
-                Search,
-                "01",
-                "Find your focus",
-                "Choose a finder, location and business niche. Start with a question that matters to your work.",
-              ],
-              [
-                ScanSearch,
-                "02",
-                "Check the evidence",
-                "Review the business, website and publicly sourced contact details together.",
-              ],
-              [
-                MailCheck,
-                "03",
-                "Review your results",
-                "See which contacts qualify and which need a closer look before you reach out.",
-              ],
-              [
-                Bookmark,
-                "04",
-                "Build your shortlist",
-                "Save useful leads, add notes, and export contacts that meet the quality checks.",
-              ],
-            ].map(([Icon, num, title, text]) => {
-              const I = Icon as typeof Search;
-              return (
-                <div className="workflow-step" key={String(num)}>
-                  <div className="row between">
-                    <I size={23} />
-                    <span>{String(num)}</span>
-                  </div>
-                  <h3>{String(title)}</h3>
-                  <p>{String(text)}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
         <section className="quality-section">
           <div>
-            <div className="eyebrow">
-              A smaller list. A stronger starting point.
-            </div>
-            <h2>
-              Make every contact
-              <br />
-              worth a closer look.
-            </h2>
+            <h2>A contact needs evidence.</h2>
             <p>
-              A bigger spreadsheet isn’t always a better prospect list.
-              LeadAtlas brings business relevance, contact sources and
-              verification details into one place, so you can make a better
-              informed decision.
+              Review why a business and its contact qualify before they reach
+              your export.
             </p>
             <Link href="/tour" className="text-link">
-              Walk through the research process <ArrowUpRight size={17} />
+              Review the sample research
             </Link>
           </div>
-          <div className="quality-points">
+          <div className="quality-proof">
             {[
               [
                 Activity,
-                "Look beyond a listing",
-                "Research current activity rather than treating a directory entry as proof.",
+                "Current activity",
+                "A listing alone does not establish an operating business.",
               ],
               [
                 Globe2,
-                "Understand the website opportunity",
-                "Distinguish a functioning website from a business with no independently identified site.",
+                "Website identity",
+                "An empty website field never proves there is no website.",
               ],
               [
                 MailCheck,
-                "Know why a contact qualifies",
-                "Review contact origins and recent checks. Stale or uncertain contacts stay out of qualified exports.",
+                "Contact verification",
+                "Unknown, stale and catch-all contacts stay out of qualified exports.",
+              ],
+              [
+                ShieldCheck,
+                "Source permissions",
+                "Rights and suppression are checked again before export.",
               ],
             ].map(([Icon, title, text]) => {
-              const I = Icon as typeof Search;
+              const I = Icon as typeof Activity;
               return (
-                <div className="quality-point" key={String(title)}>
-                  <div className="tool-icon">
-                    <I size={23} />
-                  </div>
+                <div key={String(title)}>
+                  <I size={20} aria-hidden="true" />
                   <div>
                     <h3>{String(title)}</h3>
                     <p>{String(text)}</p>
@@ -162,58 +117,29 @@ export default function Home() {
             })}
           </div>
         </section>
+        <ProductWorkflowPreview />
         <section id="who-its-for" className="audience-section section-anchor">
-          <div className="eyebrow">Built around your work</div>
-          <h2>Different goals. The same quality standard.</h2>
-          <div className="audience-grid">
-            {[
-              [
-                Layers,
-                "Website designers & agencies",
-                "Find businesses without an identified website and review whether a new site could be a relevant conversation.",
-                "/website-opportunities",
-              ],
-              [
-                ScanSearch,
-                "Domain investors",
-                "Find close business-name and existing-domain matches for brandable, personal-name and exact-match domains.",
-                "/domain-buyer-finder",
-              ],
-              [
-                Building2,
-                "Sales & marketing teams",
-                "Research relevant businesses with websites, build a focused contact list, and spend less time sorting outdated details.",
-                "/business-contacts",
-              ],
-            ].map(([Icon, title, text, href]) => {
-              const I = Icon as typeof Search;
-              return (
-                <Link
-                  className="card audience-card"
-                  href={String(href)}
-                  key={String(title)}
-                >
-                  <I size={25} />
-                  <h3>{String(title)}</h3>
-                  <p>{String(text)}</p>
-                  <span className="text-link">
-                    Find your starting point <ArrowUpRight size={16} />
-                  </span>
-                </Link>
-              );
-            })}
+          <h2>Research for the work you do.</h2>
+          <div className="audience-list">
+            <Link href="/website-opportunities">
+              <h3>Website designers &amp; agencies</h3>
+              <p>
+                Research businesses that could benefit from an independent
+                website.
+              </p>
+            </Link>
+            <Link href="/domain-buyer-finder">
+              <h3>Domain investors</h3>
+              <p>Find close existing-domain and professional-name matches.</p>
+            </Link>
+            <Link href="/business-contacts">
+              <h3>Sales &amp; marketing teams</h3>
+              <p>Keep a focused list of relevant, sourced business contacts.</p>
+            </Link>
           </div>
         </section>
         <section className="faq-section">
-          <div>
-            <div className="eyebrow">A few things to know</div>
-            <h2>
-              Clear answers.
-              <br />
-              Better decisions.
-            </h2>
-            <p>Useful context before your first search.</p>
-          </div>
+          <h2>Before your first search.</h2>
           <div className="faq-list">
             {[
               [
@@ -226,7 +152,7 @@ export default function Home() {
               ],
               [
                 "Where can I search?",
-                "Search by country, state or province, city and niche in the United States and Canada. Available results depend on current regional coverage. Recently registered business coverage is limited and varies by jurisdiction.",
+                "Business searches cover the United States and Canada, with results dependent on regional sources. Domain Buyer Finder researches related domains worldwide. Newly registered business coverage varies by jurisdiction.",
               ],
               [
                 "Do I need to configure anything?",
@@ -251,116 +177,19 @@ export default function Home() {
             ))}
           </div>
         </section>
-        <section className="final-cta">
-          <div>
-            <div className="eyebrow">
-              Your next opportunity starts with better research
-            </div>
-            <h2>Give your prospect list a clearer direction.</h2>
-            <p>Quality leads. Clearer opportunities.</p>
-          </div>
-          <Link className="button" href="/sign-up">
-            Get started <ArrowRight size={17} />
-          </Link>
-        </section>
+        <CustomerTestimonials />
+        <UpdatesSignup />
       </main>
       <footer className="footer">
-        <div>
-          <Brand />
-          <p>Quality leads. Clearer opportunities.</p>
-        </div>
+        <Brand />
         <div className="row">
           <Link href="/tour">Sample tour</Link>
           <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms & data use</Link>
+          <Link href="/terms">Terms &amp; data use</Link>
+          <Link href="/sign-up">Get started</Link>
         </div>
-        <span className="copyright">
-          © {new Date().getFullYear()} LeadAtlas
-        </span>
+        <span>© {new Date().getFullYear()} LeadAtlas</span>
       </footer>
-    </div>
-  );
-}
-function ProductPreview() {
-  return (
-    <div
-      className="product-preview"
-      aria-label="Illustrative product preview; no live business results"
-    >
-      <div className="preview-topbar">
-        <span className="preview-brand">
-          <Layers size={17} /> Your research workspace
-        </span>
-        <span className="preview-label">Illustrative preview</span>
-      </div>
-      <div className="preview-body">
-        <div className="row between">
-          <span className="eyebrow">A focused search</span>
-          <Search size={18} />
-        </div>
-        <h2>The right fit comes first.</h2>
-        <div className="preview-query">
-          <Globe2 size={19} />
-          <div>
-            <strong>Businesses With Websites</strong>
-            <span>Plumbing · Dallas, Texas</span>
-          </div>
-        </div>
-        <div className="preview-flow">
-          <span>Discover</span>
-          <ChevronRight size={14} />
-          <span>Research</span>
-          <ChevronRight size={14} />
-          <strong>Review</strong>
-        </div>
-        <div className="preview-result">
-          <div className="row between">
-            <div className="row">
-              <div className="preview-monogram">EX</div>
-              <div>
-                <strong>Example Plumbing Co.</strong>
-                <span className="small muted">
-                  Fictional business · Sample only
-                </span>
-              </div>
-            </div>
-            <Bookmark size={17} />
-          </div>
-          <div className="preview-checks">
-            {[
-              [Activity, "Business activity", "Review recent evidence"],
-              [Globe2, "Independent website", "Check business association"],
-              [
-                MailCheck,
-                "Public business email",
-                "Review contact & verification",
-              ],
-            ].map(([Icon, title, text]) => {
-              const I = Icon as typeof Search;
-              return (
-                <div key={String(title)}>
-                  <I size={17} />
-                  <span>
-                    <strong>{String(title)}</strong>
-                    <small>{String(text)}</small>
-                  </span>
-                  <Check className="preview-check-icon" size={15} />
-                </div>
-              );
-            })}
-          </div>
-          <div className="preview-bottom">
-            <span className="sample-status">
-              A clear reason for every result
-            </span>
-            <ArrowRight size={16} />
-          </div>
-        </div>
-        <p className="preview-caption">
-          A look at the workflow. No live leads or verification results are
-          shown.
-        </p>
-      </div>
     </div>
   );
 }
