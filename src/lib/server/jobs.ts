@@ -4,7 +4,11 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { jobs, quotaCounters, jobEvents } from "../db/schema";
 import { searchSchema } from "../core/validation";
-import { limits } from "../core/config";
+import {
+  limits,
+  providerCallCostUsd,
+  providerSpendConfigured,
+} from "../core/config";
 import { stableJson } from "../core/normalize";
 export function jobsConfigured() {
   return (
@@ -70,6 +74,7 @@ export async function createJob(ownerId: string, raw: unknown, key: string) {
       return existing;
     }
     const day = new Date().toISOString().slice(0, 10);
+    const month = day.slice(0, 7);
     const scope = `owner:${ownerId}`;
     const units = input.limit + input.queryBudget;
     const reserved = await tx
@@ -83,6 +88,20 @@ export async function createJob(ownerId: string, raw: unknown, key: string) {
       .returning();
     if (!reserved.length || reserved[0].units > limits().DAILY_SEARCH_BUDGET)
       throw new Error("Daily search budget exceeded");
+    const monthly = await tx
+      .insert(quotaCounters)
+      .values({ scope: `${scope}:month`, day: month, units })
+      .onConflictDoUpdate({
+        target: [quotaCounters.scope, quotaCounters.day],
+        set: { units: sql`${quotaCounters.units} + ${units}` },
+        setWhere: sql`${quotaCounters.units} + ${units} <= ${limits().MONTHLY_SEARCH_BUDGET}`,
+      })
+      .returning();
+    if (
+      !monthly.length ||
+      monthly[0].units > limits().MONTHLY_SEARCH_BUDGET
+    )
+      throw new Error("Monthly search budget exceeded");
     await tx.insert(jobEvents).values({
       id: randomUUID(),
       jobId: rows[0].id,
@@ -98,6 +117,23 @@ export async function consumeProvider(
   provider: string,
 ) {
   const day = new Date().toISOString().slice(0, 10);
+  const month = day.slice(0, 7);
+  const providerName = provider.toLowerCase();
+  const freeProviders = new Set([
+    "commoncrawl",
+    "imports",
+    "overture",
+    "canada",
+    "directories",
+    "website",
+  ]);
+  if (!freeProviders.has(providerName) && !providerSpendConfigured(provider))
+    throw new Error(
+      `Provider spend budget is disabled: configure a positive per-call maximum cost and daily/monthly caps for ${providerName}.`,
+    );
+  const reservedMicroUsd = freeProviders.has(providerName)
+    ? 0
+    : Math.max(1, Math.ceil(providerCallCostUsd(provider) * 1_000_000));
   await getDb().transaction(async (tx) => {
     const [job] = await tx
       .select()
@@ -105,16 +141,21 @@ export async function consumeProvider(
       .where(and(eq(jobs.id, jobId), eq(jobs.ownerId, ownerId)));
     if (!job || job.status === "CANCELLED")
       throw new Error("Job cancelled or unavailable");
-    for (const [scope, maximum] of [
-      [`provider:${provider}`, limits().PROVIDER_DAILY_LIMIT],
-      [`job:${jobId}`, job.input.queryBudget],
+    for (const [scope, period, maximum] of [
+      [`provider:${provider}`, day, limits().PROVIDER_DAILY_LIMIT],
+      [
+        `provider:${provider}:month`,
+        month,
+        limits().PROVIDER_MONTHLY_LIMIT,
+      ],
+      [`job:${jobId}`, "lifetime", job.input.queryBudget],
     ] as const) {
       if (maximum <= 0) throw new Error("Provider query budget exhausted");
       const used = await tx
         .insert(quotaCounters)
         .values({
           scope,
-          day: scope.startsWith("job:") ? "lifetime" : day,
+          day: period,
           units: 1,
         })
         .onConflictDoUpdate({
@@ -125,6 +166,36 @@ export async function consumeProvider(
         .returning();
       if (!used.length)
         throw new Error("Provider quota or job query budget exhausted");
+    }
+    if (reservedMicroUsd > 0) {
+      const dailyCap = Math.floor(
+        limits().PROVIDER_DAILY_SPEND_USD * 1_000_000,
+      );
+      const monthlyCap = Math.floor(
+        limits().PROVIDER_MONTHLY_SPEND_USD * 1_000_000,
+      );
+      for (const [scope, period, cap] of [
+        ["spend:all:day", day, dailyCap],
+        ["spend:all:month", month, monthlyCap],
+        [`spend:${providerName}:day`, day, dailyCap],
+        [`spend:${providerName}:month`, month, monthlyCap],
+      ] as const) {
+        const spent = await tx
+          .insert(quotaCounters)
+          .values({ scope, day: period, units: reservedMicroUsd })
+          .onConflictDoUpdate({
+            target: [quotaCounters.scope, quotaCounters.day],
+            set: {
+              units: sql`${quotaCounters.units} + ${reservedMicroUsd}`,
+            },
+            setWhere: sql`${quotaCounters.units} + ${reservedMicroUsd} <= ${cap}`,
+          })
+          .returning({ units: quotaCounters.units });
+        if (!spent.length)
+          throw new Error(
+            `Provider daily/monthly spend budget exhausted for ${providerName}`,
+          );
+      }
     }
   });
 }

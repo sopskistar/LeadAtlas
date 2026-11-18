@@ -1,4 +1,5 @@
 import { parse } from "tldts";
+import { providerSpendConfigured } from "../core/config";
 import { domainQueries } from "../core/domain";
 import { independentWebsite } from "../core/normalize";
 import type {
@@ -42,7 +43,8 @@ export const braveAdapter: SearchProviderAdapter = {
   id: "brave",
   available: () =>
     !!process.env.BRAVE_SEARCH_API_KEY &&
-    process.env.BRAVE_DISCOVERY_APPROVED === "true",
+    process.env.BRAVE_DISCOVERY_APPROVED === "true" &&
+    providerSpendConfigured("brave"),
   async discover(query, context) {
     const url = new URL("https://api.search.brave.com/res/v1/web/search");
     url.searchParams.set("q", query);
@@ -75,6 +77,7 @@ export const dataForSeoAdapter: SearchProviderAdapter = {
     !!process.env.DATAFORSEO_LOGIN &&
     !!process.env.DATAFORSEO_PASSWORD &&
     process.env.DATAFORSEO_DISCOVERY_APPROVED === "true" &&
+    providerSpendConfigured("dataforseo") &&
     (process.env.DATAFORSEO_LOCATION_CODES ?? "")
       .split(",")
       .filter((v) => /^\d+$/.test(v.trim())).length >= 2,

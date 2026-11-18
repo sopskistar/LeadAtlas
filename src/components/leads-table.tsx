@@ -500,7 +500,12 @@ function LeadManagement({
                 value={tag}
                 defaultChecked={record.tags?.includes(tag)}
               />
-              {tag.replaceAll("_", " ")}
+              {{
+                website_service: "Website services",
+                domain_prospect: "Domain prospects",
+                ai_receptionist_possible: "AI Receptionist Prospect",
+                general_lead: "General lead",
+              }[tag]}
             </label>
           ))}
         </div>

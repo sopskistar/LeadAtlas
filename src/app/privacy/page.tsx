@@ -1,5 +1,10 @@
 import { PublicHeader } from "@/components/navigation";
 import Link from "next/link";
+export const metadata = {
+  title: "Privacy & data controls",
+  description:
+    "Learn how LeadAtlas handles account data, business research evidence, verification and consented product updates.",
+};
 export default function Privacy() {
   return (
     <>

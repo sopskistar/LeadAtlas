@@ -1,5 +1,7 @@
 import { getAuth, authConfigured } from "@/lib/server/auth";
 import { emailConfigured } from "@/lib/server/email";
+import { limits } from "@/lib/core/config";
+import { consumeRequestLimit } from "@/lib/server/rate-limit";
 export const maxDuration = 30;
 export async function GET(req: Request) {
   const path = new URL(req.url).pathname;
@@ -11,6 +13,23 @@ export async function GET(req: Request) {
       },
       { status: 503 },
     );
+  try {
+    if (
+      !(await consumeRequestLimit(
+        "api:global",
+        limits().API_GLOBAL_PER_MINUTE_LIMIT,
+      ))
+    )
+      return Response.json(
+        { message: "Too many requests. Please try again shortly." },
+        { status: 429, headers: { "Retry-After": "60" } },
+      );
+  } catch {
+    return Response.json(
+      { message: "Account services are temporarily unavailable. Please try again later." },
+      { status: 503 },
+    );
+  }
   if (
     (!emailConfigured() &&
       /\/(request-password-reset|send-verification-email)$/.test(path)) ||

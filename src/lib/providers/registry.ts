@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { businesses } from "../db/schema";
 import { and, eq, ilike, gte, lte, or } from "drizzle-orm";
 import { nicheTerms } from "../core/niche";
+import { providerSpendConfigured } from "../core/config";
 export function sourceRegistry(): SourceInfo[] {
   const source = (
     id: string,
@@ -20,21 +21,26 @@ export function sourceRegistry(): SourceInfo[] {
       "canada",
     ].includes(id);
     const socialOnly = ["facebook", "instagram"].includes(id);
+    const budgetRequired = ["brave", "dataforseo", "hunter"].includes(id);
+    const hasCredentials = key ? !!process.env[key] : false;
+    const availability = ["facebook", "instagram", "google"].includes(id)
+      ? "RESTRICTED"
+      : key
+        ? !hasCredentials
+          ? "MISSING_CREDENTIALS"
+          : budgetRequired && !providerSpendConfigured(id)
+            ? "MISSING_SPEND_BUDGET"
+            : "CONFIGURED_UNTESTED"
+        : reusable
+          ? "READY_FOR_IMPORT"
+          : "NOT_CONNECTED";
     return {
       id,
       displayName,
       docs,
       licensePolicy,
       limitations,
-      availability: ["facebook", "instagram", "google"].includes(id)
-        ? "RESTRICTED"
-        : key
-          ? process.env[key]
-            ? "CONFIGURED_UNTESTED"
-            : "MISSING_CREDENTIALS"
-          : reusable
-            ? "READY_FOR_IMPORT"
-            : "NOT_CONNECTED",
+      availability,
       permittedPersistenceFields: reusable
         ? ["name", "location", "website", "email", "evidence"]
         : [],

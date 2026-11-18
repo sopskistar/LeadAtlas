@@ -129,6 +129,7 @@ export type SourceState =
   | "READY_FOR_IMPORT"
   | "MISSING_CREDENTIALS"
   | "CONFIGURED_UNTESTED"
+  | "MISSING_SPEND_BUDGET"
   | "RESTRICTED"
   | "NOT_CONNECTED";
 export type SourceInfo = {

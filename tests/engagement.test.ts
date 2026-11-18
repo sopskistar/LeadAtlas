@@ -48,6 +48,9 @@ beforeAll(async () => {
   vi.stubEnv("UPDATES_EMAIL_FROM", "LeadAtlas <updates@test.example>");
   vi.stubEnv("UPDATES_SENDER_VERIFIED", "true");
   vi.stubEnv("RESEND_API_KEY", "test-no-live-provider");
+  vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+  vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+  vi.stubEnv("RESEND_MAX_CALL_COST_USD", "0.001");
 }, 30000);
 afterAll(async () => {
   await client.close();

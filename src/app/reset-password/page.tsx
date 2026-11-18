@@ -1,6 +1,7 @@
 import { AuthForm } from "@/components/auth-form";
 export const metadata = {
   title: "Reset password",
+  description: "Set a new password for your LeadAtlas account using a secure recovery link.",
   robots: { index: false, follow: false },
   referrer: "no-referrer" as const,
 };

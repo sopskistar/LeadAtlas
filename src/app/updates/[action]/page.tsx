@@ -5,6 +5,7 @@ import { SubscriptionAction } from "@/components/homepage-engagement";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Product updates",
+  description: "Manage your consented LeadAtlas product update subscription.",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

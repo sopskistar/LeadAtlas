@@ -11,6 +11,11 @@ export function Sources() {
     verifier: boolean;
     email: boolean;
     sources: SourceInfo[];
+    spend?: {
+      unit: string;
+      daily: { usedUsd: number; capUsd: number; nearCap: boolean };
+      monthly: { usedUsd: number; capUsd: number; nearCap: boolean };
+    };
   }>("/api/admin/status");
   const { data: session } = useResource<{
     user?: { id: string };
@@ -63,8 +68,30 @@ export function Sources() {
           Transactional auth email:{" "}
           {status?.email
             ? "configured; live delivery must be verified"
-            : "missing RESEND_API_KEY / AUTH_EMAIL_FROM / verified sender approval"}
+            : "missing RESEND_API_KEY / AUTH_EMAIL_FROM / verified sender approval or Resend spend caps"}
         </p>
+        {status?.spend && (
+          <div
+            className={
+              status.spend.daily.nearCap || status.spend.monthly.nearCap
+                ? "notice"
+                : "small"
+            }
+            style={{ marginTop: 12 }}
+            role={
+              status.spend.daily.nearCap || status.spend.monthly.nearCap
+                ? "status"
+                : undefined
+            }
+          >
+            <strong>Paid provider spend reservations</strong>: daily ${status.spend.daily.usedUsd.toFixed(2)} / ${status.spend.daily.capUsd.toFixed(2)}; monthly ${status.spend.monthly.usedUsd.toFixed(2)} / ${status.spend.monthly.capUsd.toFixed(2)}.
+            {status.spend.daily.capUsd === 0 || status.spend.monthly.capUsd === 0
+              ? " Paid calls fail closed until both caps and per-call limits are configured."
+              : status.spend.daily.nearCap || status.spend.monthly.nearCap
+                ? " A configured spend cap has reached 80%; paid calls will stop at the cap."
+                : " Reservations use configured per-call maximums; provider invoices may differ."}
+          </div>
+        )}
         <p className="small" style={{ marginTop: 15 }}>
           Secrets belong in server environment variables. Use the repository’s
           .env.example, migrations and deployment guide.{" "}

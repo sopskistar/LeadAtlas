@@ -2,12 +2,20 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { themeScript } from "@/lib/core/theme-script";
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.leadatlas.xyz"),
   title: {
     default: "LeadAtlas | Business research",
     template: "%s | LeadAtlas",
   },
   description:
     "Business discovery with sourced contacts, explicit verification evidence, and quality-first lead exports.",
+  openGraph: {
+    type: "website",
+    siteName: "LeadAtlas",
+    title: "LeadAtlas | Business research",
+    description:
+      "Find relevant businesses, review contact evidence, and organize qualified prospects.",
+  },
   icons: {
     icon: [
       { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },

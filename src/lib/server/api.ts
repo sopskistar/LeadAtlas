@@ -8,7 +8,7 @@ import { validRegion } from "../core/locations";
 import { citySuggestions, nicheSuggestions } from "../reference/lookups";
 import { globalDiscoveryConfigured } from "../discovery/providers";
 import { randomUUID } from "node:crypto";
-import { and, eq, desc, sql, count, ilike } from "drizzle-orm";
+import { and, eq, desc, sql, count, ilike, or } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "../db";
 import {
@@ -39,6 +39,8 @@ import type { BusinessRecord, Product } from "../core/types";
 import { suppressMailboxes } from "../core/suppression";
 import { isAdmin } from "./access";
 import { emailConfigured } from "./email";
+import { limits, providerSpendConfigured } from "../core/config";
+import { consumeRequestLimit, trustedClientRateScope } from "./rate-limit";
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -151,7 +153,29 @@ export async function handleApi(req: Request, segments: string[]) {
   try {
     const url = new URL(req.url);
     const path = segments.join("/");
+    // Global request protection is intentionally database-backed so limits
+    // apply across serverless instances. Health status remains available even
+    // while account/search infrastructure is offline.
+    if (path !== "status") {
+      if (
+        !(await consumeRequestLimit(
+          "api:global",
+          limits().API_GLOBAL_PER_MINUTE_LIMIT,
+        ))
+      )
+        throw new ApiError(429, "Too many requests. Please try again shortly.");
+    }
     if (segments[0] === "updates") return handleUpdates(req, segments);
+    if (["testimonials", "cities", "niches"].includes(path)) {
+      const clientScope = await trustedClientRateScope(req);
+      const scopes = [
+        ["api:public", limits().API_PUBLIC_PER_MINUTE_LIMIT],
+        ...(clientScope ? [[clientScope, limits().API_PUBLIC_PER_MINUTE_LIMIT] as const] : []),
+      ] as const;
+      for (const [scope, maximum] of scopes)
+        if (!(await consumeRequestLimit(scope, maximum)))
+          throw new ApiError(429, "Too many requests. Please try again shortly.");
+    }
     if (req.method === "GET" && path === "testimonials")
       return json({ reviews: await publishedTestimonials() });
     if (req.method === "GET" && (path === "cities" || path === "niches")) {
@@ -204,6 +228,13 @@ export async function handleApi(req: Request, segments: string[]) {
       });
     if (!identity)
       throw new ApiError(401, "Sign in to use your LeadAtlas workspace.");
+    if (
+      !(await consumeRequestLimit(
+        `api:user:${identity.user.id}`,
+        limits().API_USER_PER_MINUTE_LIMIT,
+      ))
+    )
+      throw new ApiError(429, "Request limit reached. Please try again shortly.");
     if (!["GET", "HEAD"].includes(req.method)) {
       const origin = req.headers.get("origin");
       if (origin !== new URL(process.env.BETTER_AUTH_URL!).origin)
@@ -361,13 +392,34 @@ export async function handleApi(req: Request, segments: string[]) {
     }
     if (req.method === "GET" && path === "admin/status") {
       admin(ownerId);
+      const today = new Date().toISOString().slice(0, 10);
+      const month = today.slice(0, 7);
+      const spendRows = await db
+        .select({ scope: quotaCounters.scope, day: quotaCounters.day, units: quotaCounters.units })
+        .from(quotaCounters)
+        .where(
+          or(
+            and(eq(quotaCounters.scope, "spend:all:day"), eq(quotaCounters.day, today)),
+            and(eq(quotaCounters.scope, "spend:all:month"), eq(quotaCounters.day, month)),
+          ),
+        );
+      const spendConfig = limits();
+      const dailySpendUsd = (spendRows.find((r) => r.scope === "spend:all:day")?.units ?? 0) / 1_000_000;
+      const monthlySpendUsd = (spendRows.find((r) => r.scope === "spend:all:month")?.units ?? 0) / 1_000_000;
+      const dailyCapUsd = spendConfig.PROVIDER_DAILY_SPEND_USD;
+      const monthlyCapUsd = spendConfig.PROVIDER_MONTHLY_SPEND_USD;
       return json({
         auth: authConfigured(),
         database: !!process.env.DATABASE_URL,
         orchestration: jobsConfigured(),
-        verifier: !!process.env.HUNTER_API_KEY,
+        verifier: !!process.env.HUNTER_API_KEY && providerSpendConfigured("hunter"),
         email: emailConfigured(),
         sources: sourceRegistry(),
+        spend: {
+          unit: "maximum-cost reservation; provider invoices may differ",
+          daily: { usedUsd: dailySpendUsd, capUsd: dailyCapUsd, nearCap: dailyCapUsd > 0 && dailySpendUsd >= dailyCapUsd * 0.8 },
+          monthly: { usedUsd: monthlySpendUsd, capUsd: monthlyCapUsd, nearCap: monthlyCapUsd > 0 && monthlySpendUsd >= monthlyCapUsd * 0.8 },
+        },
       });
     }
     if (req.method === "GET" && path === "dashboard") {
@@ -418,6 +470,14 @@ export async function handleApi(req: Request, segments: string[]) {
         page,
       });
     if (req.method === "POST" && path === "jobs") {
+      if (
+        !(await consumeRequestLimit(
+          `api:search:${identity.user.id}`,
+          limits().API_SEARCHES_PER_HOUR_LIMIT,
+          3600,
+        ))
+      )
+        throw new ApiError(429, "Search request limit reached for this hour.");
       if (!jobsConfigured())
         throw new ApiError(
           503,
@@ -961,7 +1021,7 @@ export async function handleApi(req: Request, segments: string[]) {
       return json({ error: "Invalid JSON request" }, 400);
     const message = error instanceof Error ? error.message : "";
     if (
-      /budget|quota|Idempotency|batch|licen[cs]e|require|unsupported|configured/i.test(
+      /budget|quota|Idempotency|batch|licen[cs]e|unsupported|category does not match/i.test(
         message,
       )
     )

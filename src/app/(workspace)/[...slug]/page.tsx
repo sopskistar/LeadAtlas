@@ -24,13 +24,31 @@ const titles: Record<string, string> = {
   "settings/account": "Account & privacy",
   exports: "Exports",
 };
+const descriptions: Record<string, string> = {
+  dashboard: "Review your LeadAtlas research workspace and recent activity.",
+  "business-contacts": "Research businesses with functioning independent websites.",
+  "website-opportunities": "Research active businesses without an identified independent website.",
+  "domain-buyer-finder": "Find worldwide businesses with evidence-based domain name relationships.",
+  "new-businesses": "Research newly registered businesses and their public business presence.",
+  leads: "Save, tag and export qualified business prospects.",
+  jobs: "Review and resume your source-controlled searches.",
+  "admin/sources": "Manage authorized discovery sources and workspace operations.",
+  "admin/testimonials": "Review and manage permitted customer testimonials.",
+  "settings/account": "Manage your LeadAtlas account and privacy controls.",
+  exports: "Review qualified prospect exports from your workspace.",
+};
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string[] }>;
 }) {
   const { slug } = await params;
-  return { title: titles[slug.join("/")] ?? "Research" };
+  const path = slug.join("/");
+  return {
+    title: titles[path] ?? "Research",
+    description: descriptions[path] ?? "Private LeadAtlas business research workspace.",
+    robots: { index: false, follow: false },
+  };
 }
 export default async function Page({
   params,

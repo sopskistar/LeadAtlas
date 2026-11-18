@@ -89,6 +89,24 @@ Deploy the reviewed `feature/global-domain-discovery` branch after validation. T
 
 The Git push does not merge this branch into `main` or execute a production deployment. Local tests establish build/regression readiness, not verified production data availability.
 
+## Release-foundation request and spend limits
+
+The release-foundation branch adds database-backed global and per-user API request limits, an hourly search-start limit, monthly owner work-unit limits, monthly provider request limits, and atomic maximum-cost reservations for paid provider calls. The application ships with paid spend caps and all per-call paid-provider prices set to `0`; this is intentional fail-closed behavior. Do not set a provider's cost to an optimistic average: set a conservative maximum for the operation and separately configure a hard billing cap with that provider.
+
+Set these server-only Vercel variables for a staged account before attempting paid discovery or Hunter verification:
+
+- `PROVIDER_DAILY_SPEND_USD` and `PROVIDER_MONTHLY_SPEND_USD` (the monthly app counter supports at most `$2,000` because its current database column is a signed integer storing micro-USD).
+- The applicable `BRAVE_MAX_CALL_COST_USD`, `DATAFORSEO_MAX_CALL_COST_USD`, or `HUNTER_MAX_CALL_COST_USD` upper bound. Google, Meta, AI and other-paid settings also exist but their current adapters remain restricted or unused.
+- `RESEND_MAX_CALL_COST_USD` for transactional authentication and consented product-update mail. Email sending is reported unavailable until this reservation and both global spend caps are configured.
+- Existing request/work caps may be tuned through `API_GLOBAL_PER_MINUTE_LIMIT`, `API_USER_PER_MINUTE_LIMIT`, `API_PUBLIC_PER_MINUTE_LIMIT`, `API_SEARCHES_PER_HOUR_LIMIT`, `DAILY_SEARCH_BUDGET`, `MONTHLY_SEARCH_BUDGET`, `PROVIDER_DAILY_LIMIT`, and `PROVIDER_MONTHLY_LIMIT`.
+- Keep `TRUST_PROXY_HEADERS=false` unless the edge proxy is confirmed to overwrite the forwarded client-address header. The IP is hashed before storage. Better Auth and the updates-signup flow retain their own separate limits.
+
+The admin source page displays a warning once reserved maximum-cost reaches 80% of a configured daily or monthly cap. It reports application reservations, not a reconciled vendor invoice; provider hard billing ceilings and vendor usage alerts are still required. The optional research-AI adapter has no customer endpoint and is not called by the normal pipeline.
+
+For the Nov 18 release branch, migrations 0000–0005 remain unchanged and no migration was applied in this session. `docs/BUILD_STATUS.md` records the real staging blockers and acceptance state. The source tree's Playwright/unit fixtures are not proof of Neon, Better Auth, Resend, Inngest, worker, Hunter, Overture, Brave or DataForSEO live operation. The current production `/api/status` check returned all account/search flags false. Do not point these steps at production while staging remains unverified.
+
+The local build compiles and passes TypeScript, but the installed Next.js `16.4.3` is currently stopped by the framework's security gate. Resolve that dependency advisory on a reviewable branch, rerun the production build and the browser suite, then use only the reviewed revision for staging. The official [November 2026 security release](https://nextjs.org/blog/november-2026-security-release) lists `16.4.5` as patched; the official [release feed](https://github.com/vercel/next.js/releases) lists `16.4.6` as a later stable release. Prefer the latest patched stable version after reviewing migration notes.
+
 ## Final homepage corrections preview — 2026-11-05
 
 Branch: `frontend/final-homepage-corrections`, based on `ab53d50`. Review the [screenshots and execution record](FINAL_FRONTEND_CORRECTIONS.md) before release. This work has not been deployed or promoted to production.

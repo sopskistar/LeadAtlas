@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+const spending = vi.hoisted(() => ({ reserve: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../src/lib/server/spending", () => ({
+  reserveExternalProviderSpend: spending.reserve,
+}));
 import { emailConfigured, sendAuthEmail } from "../src/lib/server/email";
 import { POST } from "../src/app/api/auth/[...all]/route";
 afterEach(() => {
+  vi.clearAllMocks();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -9,6 +14,9 @@ function configure() {
   vi.stubEnv("RESEND_API_KEY", "fixture-only-key");
   vi.stubEnv("AUTH_EMAIL_FROM", "LeadAtlas <auth@example.com>");
   vi.stubEnv("AUTH_EMAIL_SENDER_VERIFIED", "true");
+  vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+  vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+  vi.stubEnv("RESEND_MAX_CALL_COST_USD", "0.001");
   vi.stubEnv("BETTER_AUTH_URL", "https://app.example.com");
 }
 describe("transactional authentication email", () => {
@@ -37,6 +45,7 @@ describe("transactional authentication email", () => {
       "https://app.example.com/reset-password?token=fixture",
       "reset",
     );
+    expect(spending.reserve).toHaveBeenCalledWith("resend");
     const [url, init] = fetcher.mock.calls[0];
     expect(url).toBe("https://api.resend.com/emails");
     expect(JSON.parse(init.body)).toMatchObject({

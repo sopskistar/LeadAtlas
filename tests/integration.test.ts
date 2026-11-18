@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { readFile, readdir } from "node:fs/promises";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as schema from "../src/lib/db/schema";
 import { page } from "./fixtures/business";
 let database: ReturnType<typeof drizzle<typeof schema>>;
@@ -34,6 +35,8 @@ import { discover, processBusiness, finish } from "../src/worker/pipeline";
 import { requestDiscovery } from "../src/worker/discovery-task";
 import { createJob, consumeProvider } from "../src/lib/server/jobs";
 import { safeFetch } from "../src/worker/safe-fetch";
+import { consumeRequestLimit } from "../src/lib/server/rate-limit";
+import { reserveExternalProviderSpend } from "../src/lib/server/spending";
 let cookie = "";
 let ownerId = "";
 const base = "http://localhost:3000";
@@ -105,6 +108,12 @@ beforeAll(async () => {
   vi.stubEnv("INNGEST_EVENT_KEY", "fixture-event-key");
   vi.stubEnv("INNGEST_SIGNING_KEY", "fixture-signing-key");
   vi.stubEnv("HUNTER_API_KEY", "fixture-verifier-key");
+  vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+  vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+  vi.stubEnv("HUNTER_MAX_CALL_COST_USD", "0.01");
+  vi.stubEnv("RESEND_MAX_CALL_COST_USD", "0.001");
+  vi.stubEnv("BRAVE_MAX_CALL_COST_USD", "0.01");
+  vi.stubEnv("DATAFORSEO_MAX_CALL_COST_USD", "0.01");
   vi.stubEnv("BRAVE_SEARCH_API_KEY", "");
   vi.stubEnv("RESEND_API_KEY", "fixture-email-key");
   vi.stubEnv("AUTH_EMAIL_FROM", "LeadAtlas <auth@test.example>");
@@ -699,6 +708,43 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     });
     expect((await handleApi(malicious, ["jobs"])).status).toBe(403);
   });
+  it("surfaces the admin warning at 80% of a configured spend cap", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const month = day.slice(0, 7);
+    const before = await database
+      .select()
+      .from(schema.quotaCounters)
+      .where(
+        sql`(${schema.quotaCounters.scope} = 'spend:all:day' AND ${schema.quotaCounters.day} = ${day}) OR (${schema.quotaCounters.scope} = 'spend:all:month' AND ${schema.quotaCounters.day} = ${month})`,
+      );
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "0.01");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "0.01");
+    for (const [scope, period] of [
+      ["spend:all:day", day],
+      ["spend:all:month", month],
+    ])
+      await database
+        .insert(schema.quotaCounters)
+        .values({ scope, day: period, units: 8000 })
+        .onConflictDoUpdate({
+          target: [schema.quotaCounters.scope, schema.quotaCounters.day],
+          set: { units: 8000 },
+        });
+    const response = await request("admin/status");
+    const result = await response.json();
+    expect(response.status).toBe(200);
+    expect(result.spend.daily.nearCap).toBe(true);
+    expect(result.spend.monthly.nearCap).toBe(true);
+    await database
+      .delete(schema.quotaCounters)
+      .where(
+        sql`(${schema.quotaCounters.scope} = 'spend:all:day' AND ${schema.quotaCounters.day} = ${day}) OR (${schema.quotaCounters.scope} = 'spend:all:month' AND ${schema.quotaCounters.day} = ${month})`,
+      );
+    for (const row of before)
+      await database.insert(schema.quotaCounters).values(row);
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+  });
   it("lets only administrators provision records and host policies for a customer workspace", async () => {
     const target = await signup("provisioned@test.example");
     const data = {
@@ -1027,6 +1073,70 @@ describe("persisted account → permitted import → worker → qualified CSV", 
     await expect(consumeProvider(ownerId, job.id, "hunter")).rejects.toThrow(
       "budget",
     );
+  });
+  it("enforces atomic shared request windows", async () => {
+    const scope = `test-rate:${randomUUID()}`;
+    const now = 1_800_000_000_000;
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        consumeRequestLimit(scope, 3, 60, now),
+      ),
+    );
+    expect(results.filter(Boolean)).toHaveLength(3);
+    expect(await consumeRequestLimit(scope, 3, 60, now + 60_000)).toBe(true);
+  });
+  it("reserves provider spend conservatively and atomically", async () => {
+    await database
+      .delete(schema.quotaCounters)
+      .where(sql`${schema.quotaCounters.scope} LIKE 'spend:%'`);
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "0.01");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "0.02");
+    vi.stubEnv("HUNTER_MAX_CALL_COST_USD", "0.007");
+    const job = await createJob(
+      ownerId,
+      {
+        product: "contacts",
+        country: "US",
+        region: "NY",
+        city: "New York",
+        niche: "plumber",
+        sources: ["imports"],
+        limit: 1,
+        queryBudget: 4,
+      },
+      "test-spend-reservation-0001",
+    );
+    await consumeProvider(ownerId, job.id, "hunter");
+    await expect(consumeProvider(ownerId, job.id, "hunter")).rejects.toThrow(
+      "spend budget",
+    );
+    const [counter] = await database
+      .select()
+      .from(schema.quotaCounters)
+      .where(eq(schema.quotaCounters.scope, "spend:all:day"));
+    expect(counter.units).toBe(7000);
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+  });
+  it("applies the shared paid-spend caps to transactional email", async () => {
+    await database
+      .delete(schema.quotaCounters)
+      .where(sql`${schema.quotaCounters.scope} LIKE 'spend:%'`);
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "0.01");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "0.02");
+    vi.stubEnv("RESEND_MAX_CALL_COST_USD", "0.007");
+    await reserveExternalProviderSpend("resend");
+    await expect(reserveExternalProviderSpend("resend")).rejects.toThrow(
+      "spend budget",
+    );
+    const [counter] = await database
+      .select()
+      .from(schema.quotaCounters)
+      .where(eq(schema.quotaCounters.scope, "spend:all:day"));
+    expect(counter.units).toBe(7000);
+    vi.stubEnv("PROVIDER_DAILY_SPEND_USD", "10");
+    vi.stubEnv("PROVIDER_MONTHLY_SPEND_USD", "100");
+    vi.stubEnv("RESEND_MAX_CALL_COST_USD", "0.001");
   });
   it("persisted cancellation prevents worker processing", async () => {
     const job = await createJob(

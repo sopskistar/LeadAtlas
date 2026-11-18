@@ -1,9 +1,12 @@
+import { providerSpendConfigured } from "../core/config";
+import { reserveExternalProviderSpend } from "./spending";
 /** Operator-managed transactional email. No recipient, token or key is logged. */
 export function emailConfigured() {
   return (
     !!process.env.RESEND_API_KEY &&
     !!process.env.AUTH_EMAIL_FROM &&
-    process.env.AUTH_EMAIL_SENDER_VERIFIED === "true"
+    process.env.AUTH_EMAIL_SENDER_VERIFIED === "true" &&
+    providerSpendConfigured("resend")
   );
 }
 export async function sendAuthEmail(
@@ -19,6 +22,7 @@ export async function sendAuthEmail(
     (process.env.NODE_ENV === "production" && link.protocol !== "https:")
   )
     throw new Error("Invalid authentication email origin");
+  await reserveExternalProviderSpend("resend");
   const reset = kind === "reset";
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

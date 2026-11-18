@@ -1,5 +1,10 @@
 import { PublicHeader } from "@/components/navigation";
 import Link from "next/link";
+export const metadata = {
+  title: "Responsible business research",
+  description:
+    "LeadAtlas rules for permitted business research, source terms, contact evidence and qualified exports.",
+};
 export default function Terms() {
   return (
     <>

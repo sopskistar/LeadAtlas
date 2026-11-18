@@ -14,6 +14,8 @@ import {
   updateSubscriptionEvents,
 } from "../db/schema";
 import { UPDATES_CONSENT_VERSION } from "../core/engagement";
+import { providerSpendConfigured } from "../core/config";
+import { reserveExternalProviderSpend } from "./spending";
 class UpdatesError extends Error {
   constructor(
     public status: number,
@@ -54,7 +56,8 @@ export function updatesConfigured() {
       !!origin() &&
       !!process.env.RESEND_API_KEY &&
       !!process.env.UPDATES_EMAIL_FROM &&
-      process.env.UPDATES_SENDER_VERIFIED === "true"
+      process.env.UPDATES_SENDER_VERIFIED === "true" &&
+      providerSpendConfigured("resend")
     );
   } catch {
     return false;
@@ -99,6 +102,7 @@ export const resendUpdatesMailer: UpdatesMailer = {
     ])
       if (new URL(value).origin !== allowed)
         throw new Error("Invalid updates mail origin");
+    await reserveExternalProviderSpend("resend");
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       cache: "no-store",
