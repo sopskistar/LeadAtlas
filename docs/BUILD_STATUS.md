@@ -4,6 +4,12 @@ Updated: 2026-11-18 America/New_York
 Branch: `release/leadatlas-live-foundation`
 Starting revision: `2ae1f29` (`origin/main` at inspection)
 
+## Release delivery checkpoint
+
+- `e48705f` was pushed to `origin/release/leadatlas-live-foundation` on Nov 18, 2026. It has not been merged to `main` or deployed.
+- The installed Next.js 16.4.3 security gate still causes `npm run build` to exit nonzero. An attempted upgrade to 16.4.6 could not complete because the npm registry request timed out and the offline cache lacked `eslint-config-next` metadata; package manifests and lockfile remain unchanged.
+- GitHub CLI could not connect to `api.github.com`, and no authenticated Vercel deployment path is available in this workspace. Do not promote this revision until the patched dependency upgrade, production build, CI, and staging acceptance pass.
+
 ## Goal
 
 Prepare the existing LeadAtlas foundation for personal use by the Friday, November 20 target. Preserve the approved frontend and existing product/backend contracts. Real external acceptance work must use real staging services and authorized records; automated fixtures are never evidence of a live integration.
